@@ -1,4 +1,4 @@
-`iso_codes=(jav sun mad bvz ban bug mak sda btx bts bbc mqj)
+iso_codes=(jav sun mad bvz ban bug mak sda btx bts bbc mqj)
 
 for code in "${iso_codes[@]}"; do
     echo "Running for target language: $code"
@@ -14,4 +14,4 @@ for code in "${iso_codes[@]}"; do
         --per_device_eval_batch_size 16 \
         --learning_rate 2e-4 \
         --max_steps 5000 || { echo "Failed for $code, continuing..."; continue; }
-done`
+done

@@ -88,18 +88,13 @@ def main(args):
     src_lang, tgt_lang = args.src_lang, args.tgt_lang
     src_lang_nllb, tgt_lang_nllb = args.src_lang_nllb, args.tgt_lang_nllb
     dataset_name = args.dataset_name.split("/")[-1]
-    output_dir = args.model_name.split("/")[-1]
+    output_dir = args.model_name.split("/")[0]
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     if dataset_name == "biblenlp-corpus":
         dataset = load_ebible_corpus(src_lang, tgt_lang)
     elif dataset_name == "alkitab-sabda-mt":
         dataset = load_alkitab_sabda(src_lang, tgt_lang)
-
-    dataset = dataset[args.dataset_split_name]
-
-    if args.book_name:
-        dataset = dataset.filter(lambda x: x["book"] == args.book_name)
 
     model = AutoModelForSeq2SeqLM.from_pretrained(
         args.model_name,
@@ -140,10 +135,15 @@ def main(args):
             {"verse_id": verse_id, "prediction": pred, "target": label}
             for verse_id, pred, label in zip(verse_ids, preds, labels)
         ]
-
         return {"eval_metrics": eval_result, "results": results}
 
     def infer(batch):
+        if len(batch["text_source"]) == 0:
+            return {
+                "verse_id": [],
+                "prediction": [],
+                "target": [],
+            }
         predictions = [
             out["translation_text"]
             for out in translator(
@@ -153,15 +153,23 @@ def main(args):
                 num_beams=args.num_beams,
             )
         ]
-        batch["prediction"] = predictions
-        batch["target"] = batch["text_target"]
-        return batch
+        return {
+            "verse_id": batch["verse_id"],
+            "prediction": predictions,
+            "target": batch["text_target"],
+        }
 
-    results = dataset.map(infer, batched=True, batch_size=args.per_device_eval_batch_size)
-    output = compute_metrics(results)
-
-    with open(f"{output_dir}/results.json", "w") as f:
-        json.dump(output, f, indent=2, ensure_ascii=False)
+    for split in ["validation", "test"]:
+        split_ds = dataset[split]
+        if len(split_ds) == 0:
+            print(f"Warning: Dataset is empty for split {split} for this language code.")
+            continue
+        if args.book_name:
+            split_ds = split_ds.filter(lambda x: x["book"] == args.book_name)
+        results = split_ds.map(infer, batched=True, batch_size=args.per_device_eval_batch_size)
+        output = compute_metrics(results)
+        with open(f"{output_dir}/{split}-results.json", "w") as f:
+            json.dump(output, f, indent=2, ensure_ascii=False)
 
 
 if __name__ == "__main__":

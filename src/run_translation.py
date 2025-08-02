@@ -68,6 +68,7 @@ def parse_args():
     parser.add_argument("--warmup_steps", type=int, default=1000)
     parser.add_argument("--early_stopping_patience", type=int, default=None)
     parser.add_argument("--num_proc", type=int, default=16)
+    parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
     return parser.parse_args()
 
 
@@ -202,6 +203,7 @@ def main(args):
         predict_with_generate=True,
         report_to="none",
         lr_scheduler_type=args.lr_scheduler_type,
+        gradient_accumulation_steps=args.gradient_accumulation_steps,
     )
 
     callbacks = [EarlyStoppingCallback(args.early_stopping_patience)] if args.early_stopping_patience else None
@@ -218,13 +220,13 @@ def main(args):
     )
 
     trainer.train()
-    test_results = trainer.evaluate(
-        eval_dataset=processed_dataset["test"],
-        metric_key_prefix="test",
-        max_length=args.max_length,
-        num_beams=args.num_beams,
-    )
-    print(test_results)
+    # test_results = trainer.evaluate(
+    #     eval_dataset=processed_dataset["test"],
+    #     metric_key_prefix="test",
+    #     max_length=args.max_length,
+    #     num_beams=args.num_beams,
+    # )
+    # print(test_results)
 
     trainer.save_model()
     trainer.create_model_card()
