@@ -8,7 +8,7 @@ from transformers import (
     Seq2SeqTrainer,
     Seq2SeqTrainingArguments,
 )
-from datasets import load_dataset, DatasetDict
+from datasets import load_dataset, DatasetDict, concatenate_datasets
 import numpy as np
 import evaluate
 import torch
@@ -34,6 +34,7 @@ NT_BOOKS = [
     "PHM",
     "HEB",
     "JAB",
+    "JAS",
     "1PE",
     "2PE",
     "1JN",
@@ -73,11 +74,41 @@ def parse_args():
 
 
 def load_ebible_corpus(src_lang, tgt_lang):
+    def process_translations(x):
+        """Process translations to handle multiple references and concatenate by language"""
+        languages = x["translation"]["language"]
+        translations = x["translation"]["translation"]
+        
+        # Group translations by language
+        lang_translations = {}
+        for lang, translation in zip(languages, translations):
+            if lang not in lang_translations:
+                lang_translations[lang] = []
+            lang_translations[lang].append(translation)
+        
+        # Concatenate translations for each language with space separator
+        src_text = " ".join(lang_translations.get(src_lang, [""]))
+        tgt_text = " ".join(lang_translations.get(tgt_lang, [""]))
+        return {"text_source": src_text, "text_target": tgt_text}
+    
     dataset = load_dataset("bible-nlp/biblenlp-corpus", languages=[src_lang, tgt_lang], trust_remote_code=True)
-    dataset = dataset.map(
-        lambda x: {"text_source": x["translation"][0], "text_target": x["translation"][1]},
-        input_columns=["translation"],
-    )
+    dataset = dataset.map(process_translations)
+    # OT books for testing, NT books for training and validation
+    # Handle both single refs and multiple refs
+    def is_nt_book(refs):
+        if isinstance(refs, list):
+            # Check if any ref belongs to NT books
+            return any(ref.split()[0] in NT_BOOKS for ref in refs)
+        else:
+            # Single reference
+            return refs.split()[0] in NT_BOOKS
+    
+    # The dataset is a DatasetDict, so we need to access the 'train' split
+    ds = concatenate_datasets([dataset['train'], dataset['validation'], dataset['test']])
+    train_ds = ds.filter(lambda x: is_nt_book(x["ref"]))
+    test_ds = ds.filter(lambda x: not is_nt_book(x["ref"]))
+    train_val_ds = train_ds.train_test_split(test_size=0.1, seed=41)
+    dataset = DatasetDict({"train": train_val_ds["train"], "validation": train_val_ds["test"], "test": test_ds})
     return dataset
 
 
