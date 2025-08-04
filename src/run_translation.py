@@ -1,4 +1,6 @@
 from argparse import ArgumentParser
+import os
+from pathlib import Path
 
 from transformers import (
     AutoTokenizer,
@@ -12,6 +14,18 @@ from datasets import load_dataset, DatasetDict, concatenate_datasets
 import numpy as np
 import evaluate
 import torch
+
+# Load environment variables from .env file if it exists
+try:
+    from dotenv import load_dotenv
+    env_path = Path(__file__).parent.parent / '.env'
+    if env_path.exists():
+        load_dotenv(env_path)
+        print(f"Loaded environment variables from {env_path}")
+    else:
+        print("No .env file found, proceeding without loading environment variables")
+except ImportError:
+    print("python-dotenv not installed, skipping .env file loading")
 
 NT_BOOKS = [
     "MAT",
@@ -145,6 +159,7 @@ def main(args):
         torch_dtype=torch.bfloat16,
         attn_implementation="flash_attention_2",
     )
+        
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
 
     # Add special tokens for source and target languages if they are not already present

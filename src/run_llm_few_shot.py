@@ -3,6 +3,18 @@ from pathlib import Path
 import json
 import os
 
+# Load environment variables from .env file if it exists
+try:
+    from dotenv import load_dotenv
+    env_path = Path(__file__).parent.parent / '.env'
+    if env_path.exists():
+        load_dotenv(env_path)
+        print(f"Loaded environment variables from {env_path}")
+    else:
+        print("No .env file found, proceeding without loading environment variables")
+except ImportError:
+    print("python-dotenv not installed, skipping .env file loading")
+
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sentence_transformers import SentenceTransformer
 from tqdm.contrib.concurrent import thread_map
