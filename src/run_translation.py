@@ -87,26 +87,62 @@ def parse_args():
     return parser.parse_args()
 
 
-def load_ebible_corpus(src_lang, tgt_lang):
-    def process_translations(x):
-        """Process translations to handle multiple references and concatenate by language"""
-        languages = x["translation"]["language"]
-        translations = x["translation"]["translation"]
-        
-        # Group translations by language
-        lang_translations = {}
-        for lang, translation in zip(languages, translations):
-            if lang not in lang_translations:
-                lang_translations[lang] = []
-            lang_translations[lang].append(translation)
-        
-        # Concatenate translations for each language with space separator
-        src_text = " ".join(lang_translations.get(src_lang, [""]))
-        tgt_text = " ".join(lang_translations.get(tgt_lang, [""]))
-        return {"text_source": src_text, "text_target": tgt_text}
+def process_translations(x, src_lang: str, tgt_lang: str):
+    """
+    Select a single source/target translation per row and record chosen files.
+    - Source is `src_lang`; if multiple versions exist, prefer '{src_lang}-{src_lang}.txt' (e.g., 'ind-ind.txt').
+    - Target is `tgt_lang`; assumed unique in the row.
+    Returns: text_source, text_target, source_file, target_file
+    """
+    tr = x.get("translation") or {}
+    languages = list(tr.get("language") or [])
+    texts = list(tr.get("translation") or [])
+
+    files_info = x.get("files") or {}
+    file_names = files_info.get("file") if isinstance(files_info, dict) else None
+
+    # Select source (prefer '{src}-{src}.txt' when multiple)
+    src_indices = [i for i, lang in enumerate(languages) if lang == src_lang]
+    selected_source_idx = None
+    if src_indices:
+        if len(src_indices) == 1:
+            selected_source_idx = src_indices[0]
+        else:
+            preferred_idx = None
+            if isinstance(file_names, list) and len(file_names) == len(languages):
+                preferred_filename = f"{src_lang}-{src_lang}.txt"
+                for idx in src_indices:
+                    if file_names[idx] == preferred_filename:
+                        preferred_idx = idx
+                        break
+            selected_source_idx = preferred_idx if preferred_idx is not None else src_indices[0]
+
+    # Select target (first occurrence of tgt_lang)
+    tgt_indices = [i for i, lang in enumerate(languages) if lang == tgt_lang]
+    selected_target_idx = tgt_indices[0] if tgt_indices else None
+
+    source_text = texts[selected_source_idx] if selected_source_idx is not None and selected_source_idx < len(texts) else ""
+    target_text = texts[selected_target_idx] if selected_target_idx is not None and selected_target_idx < len(texts) else ""
+
+    source_file = ""
+    target_file = ""
+    if isinstance(file_names, list) and len(file_names) == len(languages):
+        if selected_source_idx is not None and selected_source_idx < len(file_names):
+            source_file = file_names[selected_source_idx]
+        if selected_target_idx is not None and selected_target_idx < len(file_names):
+            target_file = file_names[selected_target_idx]
+
+    return {
+        "text_source": source_text,
+        "text_target": target_text,
+        "source_file": source_file,
+        "target_file": target_file,
+    }
     
+
+def load_ebible_corpus(src_lang, tgt_lang):
     dataset = load_dataset("bible-nlp/biblenlp-corpus", languages=[src_lang, tgt_lang], trust_remote_code=True)
-    dataset = dataset.map(process_translations)
+    dataset = dataset.map(process_translations, fn_kwargs={"src_lang": src_lang, "tgt_lang": tgt_lang})
     # OT books for testing, NT books for training and validation
     # Handle both single refs and multiple refs
     def is_nt_book(refs):
@@ -118,10 +154,10 @@ def load_ebible_corpus(src_lang, tgt_lang):
             return refs.split()[0] in NT_BOOKS
     
     # The dataset is a DatasetDict, so we need to access the 'train' split
-    ds = concatenate_datasets([dataset['train'], dataset['validation'], dataset['test']])
-    train_ds = ds.filter(lambda x: is_nt_book(x["ref"]))
-    test_ds = ds.filter(lambda x: not is_nt_book(x["ref"]))
-    train_val_ds = train_ds.train_test_split(test_size=0.1, seed=41)
+    train_data = dataset['train']
+    train_ds = train_data.filter(lambda x: is_nt_book(x["ref"]))
+    test_ds = train_data.filter(lambda x: not is_nt_book(x["ref"]))
+    train_val_ds = train_ds.train_test_split(test_size=0.05, seed=41)
     dataset = DatasetDict({"train": train_val_ds["train"], "validation": train_val_ds["test"], "test": test_ds})
     return dataset
 
@@ -158,6 +194,7 @@ def main(args):
         args.model_name,
         torch_dtype=torch.bfloat16,
         attn_implementation="flash_attention_2",
+        use_safetensors=True,
     )
         
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)

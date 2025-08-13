@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 import json
 
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
-from datasets import load_dataset, DatasetDict
+from datasets import load_dataset, DatasetDict, concatenate_datasets
 import evaluate
 import torch
 
@@ -27,6 +27,7 @@ NT_BOOKS = [
     "PHM",
     "HEB",
     "JAB",
+    "JAS",
     "1PE",
     "2PE",
     "1JN",
@@ -37,12 +38,78 @@ NT_BOOKS = [
 ]
 
 
+def process_translations(x, src_lang: str, tgt_lang: str):
+    """
+    Select a single source/target translation per row and record chosen files.
+    - Source is `src_lang`; if multiple versions exist, prefer '{src_lang}-{src_lang}.txt' (e.g., 'ind-ind.txt').
+    - Target is `tgt_lang`; assumed unique in the row.
+    Returns: text_source, text_target, source_file, target_file
+    """
+    tr = x.get("translation") or {}
+    languages = list(tr.get("language") or [])
+    texts = list(tr.get("translation") or [])
+
+    files_info = x.get("files") or {}
+    file_names = files_info.get("file") if isinstance(files_info, dict) else None
+
+    # Select source (prefer '{src}-{src}.txt' when multiple)
+    src_indices = [i for i, lang in enumerate(languages) if lang == src_lang]
+    selected_source_idx = None
+    if src_indices:
+        if len(src_indices) == 1:
+            selected_source_idx = src_indices[0]
+        else:
+            preferred_idx = None
+            if isinstance(file_names, list) and len(file_names) == len(languages):
+                preferred_filename = f"{src_lang}-{src_lang}.txt"
+                for idx in src_indices:
+                    if file_names[idx] == preferred_filename:
+                        preferred_idx = idx
+                        break
+            selected_source_idx = preferred_idx if preferred_idx is not None else src_indices[0]
+
+    # Select target (first occurrence of tgt_lang)
+    tgt_indices = [i for i, lang in enumerate(languages) if lang == tgt_lang]
+    selected_target_idx = tgt_indices[0] if tgt_indices else None
+
+    source_text = texts[selected_source_idx] if selected_source_idx is not None and selected_source_idx < len(texts) else ""
+    target_text = texts[selected_target_idx] if selected_target_idx is not None and selected_target_idx < len(texts) else ""
+
+    source_file = ""
+    target_file = ""
+    if isinstance(file_names, list) and len(file_names) == len(languages):
+        if selected_source_idx is not None and selected_source_idx < len(file_names):
+            source_file = file_names[selected_source_idx]
+        if selected_target_idx is not None and selected_target_idx < len(file_names):
+            target_file = file_names[selected_target_idx]
+
+    return {
+        "text_source": source_text,
+        "text_target": target_text,
+        "source_file": source_file,
+        "target_file": target_file,
+    }
+    
+
 def load_ebible_corpus(src_lang, tgt_lang):
     dataset = load_dataset("bible-nlp/biblenlp-corpus", languages=[src_lang, tgt_lang], trust_remote_code=True)
-    dataset = dataset.map(
-        lambda x: {"text_source": x["translation"][0], "text_target": x["translation"][1]}, input_columns="translation"
-    )
-    dataset = dataset.map(lambda x: {"verse_id": x[0], "book": x[0].split()[0]}, input_columns="ref")
+    dataset = dataset.map(process_translations, fn_kwargs={"src_lang": src_lang, "tgt_lang": tgt_lang})
+    # OT books for testing, NT books for training and validation
+    # Handle both single refs and multiple refs
+    def is_nt_book(refs):
+        if isinstance(refs, list):
+            # Check if any ref belongs to NT books
+            return any(ref.split()[0] in NT_BOOKS for ref in refs)
+        else:
+            # Single reference
+            return refs.split()[0] in NT_BOOKS
+    
+    # The dataset is a DatasetDict, so we need to access the 'train' split
+    train_data = dataset['train']
+    train_ds = train_data.filter(lambda x: is_nt_book(x["ref"]))
+    test_ds = train_data.filter(lambda x: not is_nt_book(x["ref"]))
+    train_val_ds = train_ds.train_test_split(test_size=0.05, seed=41)
+    dataset = DatasetDict({"train": train_val_ds["train"], "validation": train_val_ds["test"], "test": test_ds})
     return dataset
 
 
@@ -101,6 +168,9 @@ def main(args):
         torch_dtype=torch.bfloat16,
         attn_implementation="flash_attention_2",
     )
+    # Move model to GPU before creating the pipeline
+    model = model.to(device)
+    
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
     tokenizer.src_lang = src_lang_nllb
     tokenizer.tgt_lang = tgt_lang_nllb
@@ -114,8 +184,12 @@ def main(args):
         tgt_lang=tgt_lang_nllb,
     )
 
-    sacrebleu = evaluate.load("sacrebleu")
-    chrf = evaluate.load("chrf")
+    # Original BLEU (Papineni et al., 2002)
+    bleu = evaluate.load("bleu")
+    # CHRF3 score
+    chrf = evaluate.load("chrf", word_order=3)
+    # SacreBLEU with SPM tokenizer for FLORES-200 evaluation (Goyal et al., 2022)
+    spbleu = evaluate.load("sacrebleu")
 
     def postprocess_text(preds, labels):
         preds = [pred.strip() for pred in preds]
@@ -126,9 +200,19 @@ def main(args):
         preds, labels, verse_ids = eval_preds["prediction"], eval_preds["target"], eval_preds["verse_id"]
         cleaned_preds, cleaned_labels = postprocess_text(preds, labels)
 
-        sacrebleu_result = sacrebleu.compute(predictions=cleaned_preds, references=cleaned_labels)
+        # Original BLEU (Papineni et al., 2002)
+        bleu_result = bleu.compute(predictions=cleaned_preds, references=cleaned_labels)
+        
+        # CHRF3 score
         chrf_result = chrf.compute(predictions=cleaned_preds, references=cleaned_labels)
-        eval_result = {"bleu": sacrebleu_result["score"], "chrf": chrf_result["score"]}
+        
+        # spBLEU (Goyal et al., 2022) using SentencePiece tokenization
+        spbleu_result = spbleu.compute(predictions=cleaned_preds, references=cleaned_labels, tokenize="flores200")
+        eval_result = {
+            "bleu": bleu_result["bleu"],
+            "chrf3": chrf_result["score"],  # renamed to chrf3 to be explicit
+            "spbleu": spbleu_result["score"]
+        }
         eval_result = {k: round(v, 4) for k, v in eval_result.items()}
 
         results = [
@@ -138,27 +222,39 @@ def main(args):
         return {"eval_metrics": eval_result, "results": results}
 
     def infer(batch):
-        if len(batch["text_source"]) == 0:
+        try:
+            if len(batch["text_source"]) == 0:
+                return {
+                    "verse_id": [],
+                    "prediction": [],
+                    "target": [],
+                }
+            predictions = [
+                out["translation_text"]
+                for out in translator(
+                    batch["text_source"],
+                    batch_size=args.per_device_eval_batch_size,
+                    max_length=args.max_length,
+                    num_beams=args.num_beams,
+                )
+            ]
+            # verse_id is now consistently named across both datasets
+            return {
+                "verse_id": batch["verse_id"],
+                "prediction": predictions,
+                "target": batch["text_target"],
+            }
+        except Exception as e:
+            print(f"Error in inference: {e}")
+            print(f"Batch contents: {batch}")  # Print batch contents on error
             return {
                 "verse_id": [],
                 "prediction": [],
                 "target": [],
             }
-        predictions = [
-            out["translation_text"]
-            for out in translator(
-                batch["text_source"],
-                batch_size=args.per_device_eval_batch_size,
-                max_length=args.max_length,
-                num_beams=args.num_beams,
-            )
-        ]
-        return {
-            "verse_id": batch["verse_id"],
-            "prediction": predictions,
-            "target": batch["text_target"],
-        }
-
+        
+    
+    print(f"Evaluating {args.model_name} on {dataset_name} for {src_lang} to {tgt_lang}")
     for split in ["validation", "test"]:
         split_ds = dataset[split]
         if len(split_ds) == 0:

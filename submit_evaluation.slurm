@@ -12,7 +12,7 @@
 #SBATCH --output=slurm-%j.out
 #SBATCH --error=slurm-%j.err
 #SBATCH --mail-type=BEGIN,END,FAIL
-#SBATCH --mail-user=setiawand@unimelb.edu.cd
+#SBATCH --mail-user=setiawand@unimelb.edu.au
 
 # Change to the directory where the script is located
 cd $SLURM_SUBMIT_DIR
@@ -27,7 +27,6 @@ module load CUDA/12.4.1 cuDNN/9.6.0.74-CUDA-12.4.1
 export CUDA_HOME=/apps/easybuild-2022/easybuild/software/Core/CUDA/12.4.1
 export PATH=$CUDA_HOME/bin:$PATH
 export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
-# export TRANSFORMERS_NO_FLASH_ATTENTION=1
 
 # Initialize conda and activate environment
 conda activate david
@@ -39,6 +38,6 @@ echo "Node: $SLURMD_NODENAME"
 echo "Start time: $(date)"
 
 # Run the training script
-bash ./run_train.sh
+bash ./run_evaluation.sh
 
 echo "End time: $(date)"
