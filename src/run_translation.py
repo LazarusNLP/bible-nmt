@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
-import os
-from pathlib import Path
+import json
 
+from pathlib import Path
 from transformers import (
     AutoTokenizer,
     AutoModelForSeq2SeqLM,
@@ -13,6 +13,8 @@ from transformers import (
 from datasets import load_dataset, DatasetDict, concatenate_datasets
 import numpy as np
 import evaluate
+import os
+import wandb
 import torch
 
 # Load environment variables from .env file if it exists
@@ -65,7 +67,7 @@ def parse_args():
     parser.add_argument(
         "--dataset_name",
         type=str,
-        choices=["bible-nlp/biblenlp-corpus", "LazarusNLP/alkitab-sabda-mt"],
+        choices=["bible-nlp/biblenlp-corpus", "LazarusNLP/alkitab-sabda-mt", "Davidsamuel101/ebible_local_ind_corpus"],
     )
     parser.add_argument("--src_lang", type=str, default="ind")
     parser.add_argument("--tgt_lang", type=str, default="ptu")
@@ -77,11 +79,13 @@ def parse_args():
     parser.add_argument("--per_device_eval_batch_size", type=int, default=16)
     parser.add_argument("--learning_rate", type=float, default=5e-5)
     parser.add_argument("--lr_scheduler_type", type=str, default="cosine")
+    parser.add_argument("--label_smoothing_factor", type=float, default=0.0)
     parser.add_argument("--weight_decay", type=float, default=0.0)
     parser.add_argument("--num_train_epochs", type=int, default=20)
     parser.add_argument("--max_steps", type=int, default=-1)
     parser.add_argument("--warmup_steps", type=int, default=1000)
     parser.add_argument("--early_stopping_patience", type=int, default=None)
+    parser.add_argument("--early_stopping_threshold", type=float, default=0.0)
     parser.add_argument("--num_proc", type=int, default=16)
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
     return parser.parse_args()
@@ -92,7 +96,7 @@ def process_translations(x, src_lang: str, tgt_lang: str):
     Select a single source/target translation per row and record chosen files.
     - Source is `src_lang`; if multiple versions exist, prefer '{src_lang}-{src_lang}.txt' (e.g., 'ind-ind.txt').
     - Target is `tgt_lang`; assumed unique in the row.
-    Returns: text_source, text_target, source_file, target_file
+    Returns: source_text, target_text, source_file, target_file
     """
     tr = x.get("translation") or {}
     languages = list(tr.get("language") or [])
@@ -110,7 +114,7 @@ def process_translations(x, src_lang: str, tgt_lang: str):
         else:
             preferred_idx = None
             if isinstance(file_names, list) and len(file_names) == len(languages):
-                preferred_filename = f"{src_lang}-{src_lang}.txt"
+                preferred_filename = f"{src_lang}-{src_lang}ags.txt"
                 for idx in src_indices:
                     if file_names[idx] == preferred_filename:
                         preferred_idx = idx
@@ -133,8 +137,8 @@ def process_translations(x, src_lang: str, tgt_lang: str):
             target_file = file_names[selected_target_idx]
 
     return {
-        "text_source": source_text,
-        "text_target": target_text,
+        "source_text": source_text,
+        "target_text": target_text,
         "source_file": source_file,
         "target_file": target_file,
     }
@@ -144,7 +148,6 @@ def load_ebible_corpus(src_lang, tgt_lang):
     dataset = load_dataset("bible-nlp/biblenlp-corpus", languages=[src_lang, tgt_lang], trust_remote_code=True)
     dataset = dataset.map(process_translations, fn_kwargs={"src_lang": src_lang, "tgt_lang": tgt_lang})
     # OT books for testing, NT books for training and validation
-    # Handle both single refs and multiple refs
     def is_nt_book(refs):
         if isinstance(refs, list):
             # Check if any ref belongs to NT books
@@ -155,10 +158,13 @@ def load_ebible_corpus(src_lang, tgt_lang):
     
     # The dataset is a DatasetDict, so we need to access the 'train' split
     train_data = dataset['train']
+    valid_data = dataset['validation']
+    train_data = concatenate_datasets([train_data, valid_data])
     train_ds = train_data.filter(lambda x: is_nt_book(x["ref"]))
     test_ds = train_data.filter(lambda x: not is_nt_book(x["ref"]))
     train_val_ds = train_ds.train_test_split(test_size=0.05, seed=41)
     dataset = DatasetDict({"train": train_val_ds["train"], "validation": train_val_ds["test"], "test": test_ds})
+    print(dataset)
     return dataset
 
 
@@ -178,23 +184,64 @@ def load_alkitab_sabda(src_lang, tgt_lang):
     dataset = DatasetDict({"train": train_val_ds["train"], "validation": train_val_ds["test"], "test": test_ds})
     return dataset
 
+def load_ebible_local_ind_corpus(src_lang, tgt_lang):
+    dataset = load_dataset("Davidsamuel101/ebible_local_ind_corpus", f"{src_lang}_{tgt_lang}")
+    # OT books for testing, NT books for training and validation
+    def is_nt_book(refs):
+        if isinstance(refs, list):
+            # Check if any ref belongs to NT books
+            return any(ref.split()[0] in NT_BOOKS for ref in refs)
+        else:
+            # Single reference
+            return refs.split()[0] in NT_BOOKS
+    
+    # The dataset is a DatasetDict, so we need to access the 'train' split
+    train_data = dataset['train']
+    train_ds = train_data.filter(lambda x: is_nt_book(x["verse"]))
+    test_ds = train_data.filter(lambda x: not is_nt_book(x["verse"]))
+    train_val_ds = train_ds.train_test_split(test_size=0.05, seed=41)
+    dataset = DatasetDict({"train": train_val_ds["train"], "validation": train_val_ds["test"], "test": test_ds})
+    print(dataset)
+    return dataset
+
+
+class FixedLabelSmoothingSeq2SeqTrainer(Seq2SeqTrainer):
+    """
+    Workaround for an HF Trainer interaction where enabling label smoothing
+    pops labels before the forward pass, which can lead to the model receiving
+    both decoder_input_ids and decoder_inputs_embeds under some configs.
+
+    This subclass keeps labels in the model inputs, runs the forward pass,
+    and then applies the label smoother on the returned logits.
+    """
+    def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
+        labels = inputs.get("labels")
+        outputs = model(**inputs)
+        if labels is not None and self.label_smoother is not None:
+            loss = self.label_smoother(outputs, labels)
+        else:
+            loss = outputs["loss"] if isinstance(outputs, dict) else outputs.loss
+        return (loss, outputs) if return_outputs else loss
+
 
 def main(args):
     src_lang, tgt_lang = args.src_lang, args.tgt_lang
     src_lang_nllb, tgt_lang_nllb = args.src_lang_nllb, args.tgt_lang_nllb
     dataset_name = args.dataset_name.split("/")[-1]
-    output_dir = f"{args.model_name.split('/')[-1]}-{dataset_name}-{src_lang}-{tgt_lang}"
+    output_dir = f"{args.model_name.split('/')[-1]}-{dataset_name}-{src_lang}-{tgt_lang}-{args.max_steps}"
+    os.makedirs(output_dir, exist_ok=True)
 
     if dataset_name == "biblenlp-corpus":
         dataset = load_ebible_corpus(src_lang, tgt_lang)
     elif dataset_name == "alkitab-sabda-mt":
         dataset = load_alkitab_sabda(src_lang, tgt_lang)
+    elif dataset_name == "ebible_local_ind_corpus":
+        dataset = load_ebible_local_ind_corpus(src_lang, tgt_lang)
 
     model = AutoModelForSeq2SeqLM.from_pretrained(
         args.model_name,
         torch_dtype=torch.bfloat16,
         attn_implementation="flash_attention_2",
-        use_safetensors=True,
     )
         
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
@@ -221,8 +268,8 @@ def main(args):
 
     def preprocess_function(examples):
         return tokenizer(
-            examples["text_source"],
-            text_target=examples["text_target"],
+            examples["source_text"],
+            text_target=examples["target_text"],
             max_length=args.max_length,
             padding="max_length",
             truncation=True,
@@ -261,11 +308,15 @@ def main(args):
         decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
 
         sacrebleu_result = sacrebleu.compute(predictions=decoded_preds, references=decoded_labels)
-        chrf_result = chrf.compute(predictions=decoded_preds, references=decoded_labels)
-        result = {"bleu": sacrebleu_result["score"], "chrf": chrf_result["score"]}
+        chrf3_result = chrf.compute(predictions=decoded_preds, 
+                                   references=decoded_labels,
+                                   char_order=3,
+                                   word_order=0)
+        result = {"bleu": sacrebleu_result["score"], "chrf3": chrf3_result["score"]}
         result = {k: round(v, 4) for k, v in result.items()}
         return result
-
+    
+    wandb.init(project="bible-nmt", name=output_dir)
     training_args = Seq2SeqTrainingArguments(
         output_dir=output_dir,
         eval_strategy="steps",
@@ -280,18 +331,40 @@ def main(args):
         weight_decay=args.weight_decay,
         num_train_epochs=args.num_train_epochs,
         max_steps=args.max_steps,
+        label_smoothing_factor=args.label_smoothing_factor,
         save_total_limit=3,
         load_best_model_at_end=True,
         metric_for_best_model="bleu",
+        greater_is_better=True,
         predict_with_generate=True,
-        report_to="none",
+        generation_num_beams=args.num_beams,
         lr_scheduler_type=args.lr_scheduler_type,
         gradient_accumulation_steps=args.gradient_accumulation_steps,
+        gradient_checkpointing=True,
+        logging_strategy="steps",
+        logging_steps=500,
+        report_to="wandb",  # Logs to W&B
+        logging_dir=f"{output_dir}/logs",
+        run_name=output_dir,
     )
 
-    callbacks = [EarlyStoppingCallback(args.early_stopping_patience)] if args.early_stopping_patience else None
+    # Save training configuration to output directory
+    try:
+        with open(os.path.join(output_dir, "training_args.json"), "w") as f:
+            json.dump(training_args.to_dict(), f, indent=2, sort_keys=True)
+        with open(os.path.join(output_dir, "cli_args.json"), "w") as f:
+            json.dump(vars(args), f, indent=2, sort_keys=True, default=str)
+    except Exception as e:
+        print(f"Warning: failed to save training config JSONs: {e}")
 
-    trainer = Seq2SeqTrainer(
+    callbacks = [
+        EarlyStoppingCallback(
+            early_stopping_patience=args.early_stopping_patience,
+            early_stopping_threshold=args.early_stopping_threshold,
+        )
+    ] if args.early_stopping_patience else None
+
+    trainer = FixedLabelSmoothingSeq2SeqTrainer(
         model=model,
         args=training_args,
         train_dataset=processed_dataset["train"],
@@ -303,14 +376,7 @@ def main(args):
     )
 
     trainer.train()
-    # test_results = trainer.evaluate(
-    #     eval_dataset=processed_dataset["test"],
-    #     metric_key_prefix="test",
-    #     max_length=args.max_length,
-    #     num_beams=args.num_beams,
-    # )
-    # print(test_results)
-
+  
     trainer.save_model()
     trainer.create_model_card()
     tokenizer.save_pretrained(output_dir)

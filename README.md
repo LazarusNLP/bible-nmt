@@ -86,3 +86,86 @@ python src/run_llm_few_shot.py \
 | Source | Target | Dataset           | Eval Set |  BLEU   |  chrF   |
 | ------ | ------ | ----------------- | -------- | :-----: | :-----: |
 | `ind`  | `ptu`  | `biblenlp-corpus` | `test`   | 14.5615 | 41.1438 |
+
+
+
+### Data Statistics
+```
+Language: aaz
+  Source <=256: 9068 (100.00%)
+  Source >256: 0 (0.00%)
+  Target <=256: 9043 (99.72%)
+  Target >256: 25 (0.28%)
+  Total examples: 9068
+----------------------------------------
+Language: ptu
+  Source <=256: 9345 (100.00%)
+  Source >256: 0 (0.00%)
+  Target <=256: 9345 (100.00%)
+  Target >256: 0 (0.00%)
+  Total examples: 9345
+----------------------------------------
+Language: nfa
+  Source <=256: 9070 (100.00%)
+  Source >256: 0 (0.00%)
+  Target <=256: 9046 (99.74%)
+  Target >256: 24 (0.26%)
+  Total examples: 9070
+----------------------------------------
+Language: heg
+  Source <=256: 9073 (100.00%)
+  Source >256: 0 (0.00%)
+  Target <=256: 9066 (99.92%)
+  Target >256: 7 (0.08%)
+  Total examples: 9073
+----------------------------------------
+Language: lex
+  Source <=256: 9673 (99.99%)
+  Source >256: 1 (0.01%)
+  Target <=256: 9670 (99.96%)
+  Target >256: 4 (0.04%)
+  Total examples: 9674
+----------------------------------------
+Language: row
+  Source <=256: 9070 (100.00%)
+  Source >256: 0 (0.00%)
+  Target <=256: 9062 (99.91%)
+  Target >256: 8 (0.09%)
+  Total examples: 9070
+----------------------------------------
+Language: llg
+  Source <=256: 9071 (100.00%)
+  Source >256: 0 (0.00%)
+  Target <=256: 9065 (99.93%)
+  Target >256: 6 (0.07%)
+  Total examples: 9071
+----------------------------------------
+Language: rgu
+  Source <=256: 8223 (100.00%)
+  Source >256: 0 (0.00%)
+  Target <=256: 8211 (99.85%)
+  Target >256: 12 (0.15%)
+  Total examples: 8223
+----------------------------------------
+Language: txq
+  Source <=256: 9069 (100.00%)
+  Source >256: 0 (0.00%)
+  Target <=256: 9055 (99.85%)
+  Target >256: 14 (0.15%)
+  Total examples: 9069
+----------------------------------------
+Language: tet
+  Source <=256: 9069 (100.00%)
+  Source >256: 0 (0.00%)
+  Target <=256: 9065 (99.96%)
+  Target >256: 4 (0.04%)
+  Total examples: 9069
+----------------------------------------
+Language: wrs
+  Source <=256: 8981 (100.00%)
+  Source >256: 0 (0.00%)
+  Target <=256: 8979 (99.98%)
+  Target >256: 2 (0.02%)
+  Total examples: 8981
+----------------------------------------
+```

@@ -1,0 +1,6 @@
+*.arrow linguist-vendored
+*.parquet linguist-vendored
+*.json linguist-vendored
+*.txt linguist-vendored
+*.md linguist-documentation
+*.py linguist-documentation
