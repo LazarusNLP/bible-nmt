@@ -2,10 +2,13 @@ from argparse import ArgumentParser
 import json
 import os
 
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
-from datasets import load_dataset, DatasetDict, concatenate_datasets
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+from datasets import load_dataset, DatasetDict, concatenate_datasets, Dataset
 import evaluate
 import torch
+from nltk.translate.bleu_score import corpus_bleu
+from nltk.tokenize import word_tokenize
+import random
 
 NT_BOOKS = [
     "MAT",
@@ -44,7 +47,7 @@ def process_translations(x, src_lang: str, tgt_lang: str):
     Select a single source/target translation per row and record chosen files.
     - Source is `src_lang`; if multiple versions exist, prefer '{src_lang}-{src_lang}.txt' (e.g., 'ind-ind.txt').
     - Target is `tgt_lang`; assumed unique in the row.
-    Returns: text_source, text_target, source_file, target_file
+    Returns: source_text, target_text, source_file, target_file
     """
     tr = x.get("translation") or {}
     languages = list(tr.get("language") or [])
@@ -85,15 +88,15 @@ def process_translations(x, src_lang: str, tgt_lang: str):
             target_file = file_names[selected_target_idx]
 
     return {
-        "text_source": source_text,
-        "text_target": target_text,
+        "source_text": source_text,
+        "target_text": target_text,
         "source_file": source_file,
         "target_file": target_file,
     }
     
 
 def load_ebible_corpus(src_lang, tgt_lang):
-    dataset = load_dataset("bible-nlp/biblenlp-corpus", languages=[src_lang, tgt_lang], trust_remote_code=True)
+    dataset = load_dataset("bible-nlp/biblenlp-corpus", languages=[src_lang, tgt_lang])
     dataset = dataset.map(process_translations, fn_kwargs={"src_lang": src_lang, "tgt_lang": tgt_lang})
     dataset = dataset.map(lambda x: {"verse_id": str(x["ref"])})
     # OT books for testing, NT books for training and validation
@@ -115,6 +118,26 @@ def load_ebible_corpus(src_lang, tgt_lang):
     dataset = DatasetDict({"train": train_val_ds["train"], "validation": train_val_ds["test"], "test": test_ds})
     return dataset
 
+def load_ebible_local_ind_corpus(src_lang, tgt_lang):
+    dataset = load_dataset("Davidsamuel101/ebible_local_ind_corpus", f"{src_lang}_{tgt_lang}")
+    dataset = dataset.map(lambda x: {"verse_id": str(x["verse"])})
+    def is_nt_book(refs):
+        if isinstance(refs, list):
+            # Check if any ref belongs to NT books
+            return any(ref.split()[0] in NT_BOOKS for ref in refs)
+        else:
+            # Single reference
+            return refs.split()[0] in NT_BOOKS
+    
+    # The dataset is a DatasetDict, so we need to access the 'train' split
+    train_data = dataset['train']
+    train_ds = train_data.filter(lambda x: is_nt_book(x["verse"]))
+    test_ds = train_data.filter(lambda x: not is_nt_book(x["verse"]))
+    train_val_ds = train_ds.train_test_split(test_size=0.05, seed=41)
+    dataset = DatasetDict({"train": train_val_ds["train"], "validation": train_val_ds["test"], "test": test_ds})
+    print(dataset)
+    return dataset
+
 
 def load_alkitab_sabda(src_lang, tgt_lang):
     dataset = load_dataset(
@@ -133,18 +156,105 @@ def load_alkitab_sabda(src_lang, tgt_lang):
     return dataset
 
 
+def _find_model_base_dir_for_presplit_files(model_name_path: str) -> str:
+    """Locate where validation/test .src/.trg files live.
+
+    Assumes files are directly in the parent of the model_name path
+    (e.g., when model_name points to .../checkpoint-XXXX).
+    """
+    parent_dir = os.path.abspath(os.path.join(model_name_path, os.pardir))
+    if not os.path.isdir(parent_dir):
+        raise ValueError(
+            f"Parent directory does not exist for model path: {model_name_path}"
+        )
+    has_validation_src = (
+        os.path.exists(os.path.join(parent_dir, "validation.src.detok.txt"))
+        or os.path.exists(os.path.join(parent_dir, "validation.src.txt"))
+    )
+    if has_validation_src:
+        return parent_dir
+    raise ValueError(
+        f"Expected pre-split files in parent of model path. Missing 'validation.src(.detok).txt' in: {parent_dir}"
+    )
+
+
+def _choose_split_file(base_dir: str, split_name: str, side: str) -> str:
+    """Return path to preferred file for split and side (src/trg).
+
+    Preference order: .detok.txt -> .txt
+    """
+    detok = os.path.join(base_dir, f"{split_name}.{side}.detok.txt")
+    raw = os.path.join(base_dir, f"{split_name}.{side}.txt")
+    if os.path.exists(detok):
+        return detok
+    if os.path.exists(raw):
+        return raw
+    raise FileNotFoundError(f"Missing files for {split_name}.{side} under {base_dir}")
+
+
+def load_scripture_files_pre_split_from_model_dir(model_name_path: str) -> DatasetDict:
+    """Load pre-split validation/test text from the model directory.
+
+    Expects files like:
+      - validation.src(.detok).txt
+      - validation.trg(.detok).txt
+      - test.src(.detok).txt
+      - test.trg(.detok).txt
+
+    Also loads train.* if present, otherwise returns an empty train split.
+    """
+    base_dir = _find_model_base_dir_for_presplit_files(model_name_path)
+
+    def read_parallel(split: str):
+        src_path = _choose_split_file(base_dir, split, "src")
+        trg_path = _choose_split_file(base_dir, split, "trg")
+        with open(src_path, "r", encoding="utf-8") as fsrc:
+            src_lines = [line.rstrip("\n") for line in fsrc]
+        with open(trg_path, "r", encoding="utf-8") as ftrg:
+            trg_lines = [line.rstrip("\n") for line in ftrg]
+        if len(src_lines) != len(trg_lines):
+            raise ValueError(
+                f"Line count mismatch for split '{split}': {len(src_lines)} src vs {len(trg_lines)} trg"
+            )
+        return Dataset.from_list([
+            {"source_text": s, "target_text": t} for s, t in zip(src_lines, trg_lines)
+        ])
+
+    # Required splits: validation and test
+    validation_ds = read_parallel("validation")
+    test_ds = read_parallel("test")
+
+    # Optional train split
+    try:
+        train_ds = read_parallel("train")
+    except Exception:
+        train_ds = Dataset.from_list([])
+
+    return DatasetDict({
+        "train": train_ds,
+        "validation": validation_ds,
+        "test": test_ds,
+    })
+
+
 def parse_args():
     parser = ArgumentParser()
     parser.add_argument("--model_name", type=str, default="facebook/nllb-200-distilled-600M")
     parser.add_argument(
         "--dataset_name",
         type=str,
-        choices=["bible-nlp/biblenlp-corpus", "LazarusNLP/alkitab-sabda-mt"],
+        choices=["bible-nlp/biblenlp-corpus", "LazarusNLP/alkitab-sabda-mt", "Davidsamuel101/ebible_local_ind_corpus", "scripture_files"],
     )
     parser.add_argument("--src_lang", type=str, default="ind")
     parser.add_argument("--tgt_lang", type=str, default="btx")
     parser.add_argument("--src_lang_nllb", type=str, default="ind_Latn")
     parser.add_argument("--tgt_lang_nllb", type=str, default="btx_Latn")
+    
+    # Scripture file paths (for dataset_name="scripture_files")
+    parser.add_argument("--source_text_path", type=str, default=None, help="Path to source language scripture text file")
+    parser.add_argument("--target_text_path", type=str, default=None, help="Path to target language scripture text file")
+    parser.add_argument("--verse_text_path", type=str, default=None, help="Path to verse reference file (e.g., GEN 1:1)")
+    
     parser.add_argument("--dataset_split_name", type=str, default="test")
     parser.add_argument("--book_name", type=str, default=None)
     parser.add_argument("--max_length", type=int, default=128)
@@ -166,12 +276,19 @@ def main(args):
         dataset = load_ebible_corpus(src_lang, tgt_lang)
     elif dataset_name == "alkitab-sabda-mt":
         dataset = load_alkitab_sabda(src_lang, tgt_lang)
+    elif dataset_name == "ebible_local_ind_corpus":
+        dataset = load_ebible_local_ind_corpus(src_lang, tgt_lang)
+    elif dataset_name == "scripture_files":
+        dataset = load_scripture_files_pre_split_from_model_dir(args.model_name)
 
     # Ensure output directory exists
-    os.makedirs(output_dir, exist_ok=True)
+    if not output_dir:
+        output_dir = args.model_name
 
     translator = None
     if not args.baseline:
+        # Lazy import to avoid pulling in torchvision when not needed
+        from transformers import pipeline
         model = AutoModelForSeq2SeqLM.from_pretrained(
             args.model_name,
             torch_dtype=torch.bfloat16,
@@ -180,7 +297,15 @@ def main(args):
         # Move model to GPU before creating the pipeline
         model = model.to(device)
         
-        tokenizer = AutoTokenizer.from_pretrained(args.model_name)
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(args.model_name)
+        except Exception as e:
+            print(f"Error in tokenizer: {e}")
+            
+            model_dir = args.model_name
+            # Go 2 parent directories up
+            model_dir = os.path.abspath(os.path.join(model_dir, "..", ".."))
+            tokenizer = AutoTokenizer.from_pretrained(model_dir)
         tokenizer.src_lang = src_lang_nllb
         tokenizer.tgt_lang = tgt_lang_nllb
 
@@ -193,8 +318,6 @@ def main(args):
             tgt_lang=tgt_lang_nllb,
         )
 
-    # Original BLEU (Papineni et al., 2002)
-    bleu = evaluate.load("bleu")
     # chrF++ score (character n-grams with word n-grams)
     chrf = evaluate.load("chrf")
     # SacreBLEU with SPM tokenizer for FLORES-200 evaluation (Goyal et al., 2022)
@@ -207,78 +330,85 @@ def main(args):
         return preds, labels
 
     def compute_metrics(eval_preds):
-        preds, labels, verse_ids = eval_preds["prediction"], eval_preds["target"], eval_preds["verse_id"]
+        preds, labels, verse_ids, sources = eval_preds["prediction"], eval_preds["target"], eval_preds["verse_id"], eval_preds["source"]
         cleaned_preds, cleaned_labels = postprocess_text(preds, labels)
 
-        # Original BLEU (Papineni et al., 2002)
-        bleu_result = bleu.compute(predictions=cleaned_preds, references=cleaned_labels)
+        # Calculate BLEU score using NLTK
+        # Tokenize predictions and references for BLEU calculation
+        tokenized_preds = [word_tokenize(pred.lower().strip()) for pred in cleaned_preds]
+        tokenized_refs = [[word_tokenize(ref[0].lower().strip())] for ref in cleaned_labels]
+        
+        bleu_score = corpus_bleu(tokenized_refs, tokenized_preds)
+        
         sacrebleu_result = sacrebleu.compute(predictions=cleaned_preds, references=cleaned_labels)
         spbleu_result = spbleu.compute(predictions=cleaned_preds, references=cleaned_labels, tokenize="flores200")
-        
-        # chrF++ score
         chrf_result = chrf.compute(
+            predictions=cleaned_preds,
+            references=cleaned_labels,
+        )
+        chrf_plus_result = chrf.compute(
             predictions=cleaned_preds,
             references=cleaned_labels,
             word_order=2,
         )
-        
-        # chrF3: set beta=3 and include word n-grams (word_order=2) like chrF++
         chrf3_result = chrf.compute(
             predictions=cleaned_preds,
             references=cleaned_labels,
-            char_order=3,
-            word_order=0
+            beta=3
         )
         
-        # spBLEU (Goyal et al., 2022) using SentencePiece tokenization
         eval_result = {
-            "bleu": bleu_result["bleu"]*100,
+            "bleu": bleu_score * 100,  # Convert to percentage like the original
             "sacrebleu": sacrebleu_result["score"],
             "spbleu": spbleu_result["score"],
+            "chrf": chrf_result["score"],
             "chrf3": chrf3_result["score"],
-            "chrf++": chrf_result["score"],
+            "chrf++": chrf_plus_result["score"],
         }
         eval_result = {k: round(v, 4) for k, v in eval_result.items()}
 
         results = [
-            {"verse_id": verse_id, "prediction": pred, "target": label}
-            for verse_id, pred, label in zip(verse_ids, preds, labels)
+            {"verse_id": verse_id, "source": source, "prediction": pred, "target": label}
+            for verse_id, source, pred, label in zip(verse_ids, sources, preds, labels)
         ]
         return {"eval_metrics": eval_result, "results": results}
 
     def infer(batch):
         try:
-            if len(batch["text_source"]) == 0:
+            if len(batch["source_text"]) == 0:
                 return {
                     "verse_id": [],
                     "prediction": [],
                     "target": [],
                 }
             if args.baseline:
-                predictions = list(batch["text_source"])  # Echo source as prediction
+                predictions = list(batch["source_text"])  # Echo source as prediction
             else:
                 predictions = [
                     out["translation_text"]
                     for out in translator(
-                        batch["text_source"],
+                        batch["source_text"],
                         batch_size=args.per_device_eval_batch_size,
                         max_length=args.max_length,
                         num_beams=2,
                     )
                 ]
-            # verse_id is now consistently named across both datasets
+            # Handle different verse field names - scripture_files and some datasets use "verse_id", others use "verse"
+            verse_ids = batch.get("verse_id", batch.get("verse", [""] * len(batch["source_text"])))
             return {
-                "verse_id": batch["verse_id"],
+                "verse_id": verse_ids,
+                "source": batch["source_text"],
                 "prediction": predictions,
-                "target": batch["text_target"],
+                "target": batch["target_text"],
             }
         except Exception as e:
             print(f"Error in inference: {e}")
             print(f"Batch contents: {batch}")  # Print batch contents on error
-            batch_size = len(batch["text_source"]) if "text_source" in batch else 0
+            batch_size = len(batch["source_text"]) if "source_text" in batch else 0
             empty_strings = [""] * batch_size
             return {
                 "verse_id": empty_strings,
+                "source": batch["source_text"],
                 "prediction": empty_strings,
                 "target": empty_strings,
             }

@@ -203,3 +203,4 @@ gpt*/
 baseline/
 data/
 wandb/
+slurm*
