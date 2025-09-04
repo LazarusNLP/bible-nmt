@@ -204,3 +204,4 @@ baseline/
 data/
 wandb/
 slurm*
+*slurm*
