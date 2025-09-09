@@ -292,7 +292,7 @@ def main(args):
         model = AutoModelForSeq2SeqLM.from_pretrained(
             args.model_name,
             torch_dtype=torch.bfloat16,
-            attn_implementation="flash_attention_2",
+            attn_implementation="sdpa",
         )
         # Move model to GPU before creating the pipeline
         model = model.to(device)
