@@ -204,3 +204,4 @@ data/
 wandb/
 slurm*
 *slurm*
+fast_align

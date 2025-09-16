@@ -1,0 +1,1 @@
+python3 scripts/extract_dictionary.py "dictionary/Kamus Dhao-Indonesia bersih.md" dictionary/dhao_ind_dictionary.csv
