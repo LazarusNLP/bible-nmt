@@ -1,0 +1,707 @@
+
+Noto Serif CJK TC
+Noto Serif CJK TC
+STSong
+  STSong
+  Droid Sans Fallback
+    Droid Sans Fallback
+    SimSun
+
+
+bahasa
+CMU Serif
+CMU Serif
+DejaVu Sans
+  DejaVu Sans
+  Georgia
+
+
+singlelinecheck=false
+A - a
+
+
+
+
+ &  &  &  
+
+2l2*anak sulung . ana uuru, & 2*api apit &  &  &  &  
+
+2c &  & toplefty=199 & topleftx=365) &  & kkt. ngapi. 
+
+ & anak suruhan kb. ana paleha; & apung & kki. talebo. &  &  &  
+
+ & kb. ana pajuu, & arak & kb. dhua ara. &  &  &  
+
+anakan & . ana nganga'a. & ares & kkt. kèpe (2). &  &  &  
+
+anay-anay & kb. anarai. & arif & Idiom. d'èlu-mèu. &  &  &  
+
+anda & kgn. èu. & arti & kb. sasoa. &  &  &  
+
+angguk & kki. pangètu. & arus & kb. rii. &  &  &  
+
+angin & kb. ngèlu. & arwah & kb. samanga. &  &  &  
+
+angin ribut & kb. bohe. & asal & phub. sad'i. &  &  &  
+
+angin tofan & kb. bohe. & asam & ks. manyilu. &  &  &  
+
+[t]7*angkat & kkt. bau; & asap & kb. sèbu. &  &  &  
+
+ & kkt. ded'e (1); & asapi & kkt. pasèbu. &  &  &  
+
+ & kkt. doa; & asin & ks. sèro. &  &  &  
+
+ & kkt. j'oka (1); & asinkan & kkt. pasèro. &  &  &  
+
+ & kkt. j'oke; & atap & . rèu èmu. &  &  &  
+
+ & kkt. nedhe; & atas & kb. kolo (1); &  &  &  
+
+ & kkt. padoa. &  & ks. dedha. &  &  &  
+
+[t]2*angkuh & ks. pabhèni; & atau & phub. do. &  &  &  
+
+ & ks. pamone. & atur & kkt. lalau. &  &  &  
+
+[t]2*anjing & . busa. & awal & kb. uru kamai. &  &  &  
+
+2lanjing polisi . busa sobu. & awan & kb. ra'i liru. &  &  &  
+
+antar & kkt. lere. & awan-awan & kb. rara'i liru. &  &  &  
+
+antara & kb. talora. & awas & kki. mage. &  &  &  
+
+2lanting-anting . ate-ate. & ayah & kb. ama. &  &  &  
+
+antri & kk. panoo. & ayam & kb. manu. &  &  &  
+
+anyam & kkt. ènyu. & ayam, telur & kb. kanadhu manu. &  &  &  
+
+apa & Q. ngaa. & ayo & kseru. we! &  &  &  
+
+apa sebab & . nga tao ka. &  &  &  &  &  
+
+
+B - b
+
+
+
+
+
+
+
+ &  &  &  
+
+[t]3*belah & kki. masèke; & berhenti & kki. ; &  &  &  
+
+ & kkt. bèka  (1); &  & . &  &  &  
+
+ & kkt. pare. & beri & kkt.  (1); &  &  &  
+
+belakang & kb. kabodho; ks. limuri. & 2lberi kehidupan kkt. pamamuri. &  &  &  
+
+belalang & kb. kabara. & 2lberi salam kkt. maho'o. &  &  &  
+
+beli & kkt. hèli; & 2c2*
+![](https://cdn.mathpix.com/cropped/202509095abe3973251282b4e7a9g-04.jpg?height=44 & width=134 & toplefty=777 & topleftx=938) 
+
+[t]2*belit-belit & kkt. karadhe; &  &  &  &  &  
+
+ & Idiom. koe-kalèko. & berikan &  &  &  &  
+
+[t]2*belum & Neg. dhae; & berikut & kket. padhutu. &  &  &  
+
+ & Neg. mèka. & beritahu & kki. moa; &  &  &  
+
+[t]4*benam, terbenang benar & kkt. cèna. &  & kki. rodhe; &  &  &  
+
+ & . loa hèngu. &  & kkt. ale. &  &  &  
+
+ & kki. lèke; & 2lberitahu, saling kkt. papeka. &  &  &  
+
+ & ks. tare'a. & beritahukan & kkt. peka; &  &  &  
+
+[t]3*bengkok & ks. kapod'e; & 2ckkt. pèka. &  &  &  
+
+ & ks. koe; & 2lberjalan sambil berbicara &  &  &  
+
+ & Idiom. koe-kalèko. & 2ckki. pa'asu-pareo. &  &  &  
+
+[t]2*bengkok-mir & [b]2*Idiom. koe-kapengo. & berkat & kb. mamèngi. &  &  &  
+
+ &  & berkelahi & kk. patao; &  &  &  
+
+benih & . &  & kkt. pagama. &  &  &  
+
+bentangkan & kkt. hèle. & berlutut & kki. kètu urutuu. &  &  &  
+
+ber- & Vpref. . & 2cbermacam-macam ks. rupa-rupa. &  &  &  
+
+beranak & kki. lega; & bermalam & kki.j'unu. &  &  &  
+
+ & kki. pakèdi. & 2cberputar di dalam kki. palelème. &  &  &  
+
+berani & kki. bani. & bersalin & kki. nara iisi. &  &  &  
+
+berapa & kata tanya. pèri. & bersama & kdep. dènga; &  &  &  
+
+beras & . Laludhu. &  & kdep. dènge; &  &  &  
+
+berat & ks. bia (1). &  & kdep. d'ènge. &  &  &  
+
+
+
+
+
+
+
+
+C - c
+
+
+
+dari dulu
+
+
+
+labelformat=empty
+cepat-cepat
+
+
+
+
+
+
+
+
+
+
+
+E-e
+
+
+
+empunya kkt. unu (1).
+
+
+
+
+
+festa . kalela.
+
+G - g
+
+
+
+
+
+
+
+
+
+
+
+
+
+I - i
+
+
+
+
+
+
+J - j
+
+
+
+
+ 
+
+
+
+
+
+ke (satu arah) kki. la'a.
+
+kebaikan . babe'a.
+
+kebas kk.caro.
+
+kebaya kb. kabae.
+
+keberuntungan . mamèngi.
+
+kebodohan kb. gagoa.
+
+kebun . oka (1).
+
+kecewa kk. tèka dara.
+
+kecil ks.ana iiki;
+
+ks. iiki.
+
+kecuali kket. dhodhoka.
+
+kedatangan kb. mamai.
+
+kedua Num. kadua.
+
+kegiatan kb. tatao (1).
+
+kehendak kb. dadèi.
+
+kehidupan kb. mamuri (1).
+
+kejadian kb.j'aj'aj'i.
+
+kejahatan . bhabhelu.
+
+kejam kk. bhelu;
+
+kki. bhèu.
+
+kejar kkt. magèi;
+
+kkt. magèla.
+
+kekang (kuda) kb. kakapa.
+
+kekayaan kb. doi-dhari;
+
+kb. kakaja;
+
+kb. kakaja-su'i.
+
+kekerabat kb. a'a-ari;
+
+kb. a'ari.
+
+kekuatan  èra.
+
+kelakuan kb. tatao (1).
+
+kelapa . nyiu.
+
+kelaparan kki. madèu;
+
+Idiom.
+
+kabake-manganga.
+
+kelebihan kket. risi.
+
+keliling . lème;
+
+kki. leli (1);
+
+kki. pareo;
+
+kkt. palème.
+
+kelilingi kkt. lingu;
+
+kkt. reo.
+
+keliru kki.tasala.
+
+keluarga . anga (1).
+
+keluh-kesah kk. roma iisi.
+
+kemah . paleo .
+
+kemampuan . dadèi.
+
+kemarahan kb. nanasa.
+
+kemari kki. mai.
+
+kemarin . meda.
+
+kematian . mamadhe.
+
+kemeja . kodho.
+
+kemudi . uli.
+
+kemudian ks. limuri;
+
+phub. èle èèna ka;
+
+phub. hèia;
+
+phub. pe.
+
+kena . lèka (1);
+
+kki. lèke.
+
+kenal kkt. tadhe.
+
+kenapa . nga tao ka.
+
+kencang kk. bhuu-bhuu;
+
+ks. kadhii;
+
+ks. mèdhu .
+
+kencangkan . ère;
+
+kkt. pakadhii;
+
+kkt. rèdha (1).
+
+kencing . èi soro èi.
+
+kenyang kki. bècu.
+
+kepada kdep. dènga;
+
+kdep. dènge;
+
+kdep. d'ènge;
+
+kdep. .
+
+kepala . kètu (1);
+
+. mone eele.
+
+kepala (kelompok sosial)
+
+. kètu (2).
+
+
+
+
+
+
+
+L - l
+
+
+
+
+
+
+
+
+
+M-m
+
+
+
+
+
+
+
+ &  & kb. rèhu; 
+
+ &  &  & . rohu. 
+
+2l2* &  & mulai bekerja kki. bhoke sasab'a, 
+
+ &  &  & lihat: bhoke. 
+
+ & AM. hudi; &  & mulai (bicara) kkt. j'oka (2). 
+
+ & TAM. hud'i. & mulia, ter- & phub. hua iia. 
+
+milik & kkt. unu (1). & mulut & kb. hèb'a. 
+
+mimpi & kb. tanila; & muncul & kki. bhodho; 
+
+minggu & . migu. &  & . 
+
+minta & kk. manèngi; & mundur & kki. hari kabodho. 
+
+ & kkt. & muntah & kki. mèdhu⿰ . 
+
+ & manèngi-mangaj'i & musim & . hèru (2). 
+
+ & (1). &  & musim dingin . hèru pacuhi. 
+
+minta diri & kki. palangu; kki. palangu lii. &  & musim hujan . hèru èj'i lai. musim ombak . hèru dhasi aae. 
+
+minta nikah & Idiom. tenge dhèu. &  & musim panas . hèru hadhu; 
+
+minum & kkt. ninu. &  & . hèru sagoro. 
+
+minyak & kb. mènyi. &  & musim panen . hèru puu-g'ètu. 
+
+2lminyak kelapa . èi lèngi. &  & musim tanam . hèru sèla. 
+
+2lminyak tanah . èi mènyi rai; &  &  
+
+2rkb. èi mènyi rai, lihat: mènyi. &  &  
+
+
+N-n
+
+
+
+0-0
+
+
+
+
+
+
+
+
+
+
+penglihatan
+
+penglihatan . laladhe;
+
+kb. nanèdhi;
+
+. tanila.
+
+penjara . bèdho (2).
+
+penting ks. kapai (2).
+
+penuhi kkt. papènu.
+
+penutup . bèdho (1).
+
+penyair . dhèu ne'a hini.
+
+penyakit . papèda.
+
+pepaya . lolobangi.
+
+perahu .koha;
+
+kb. rao (2);
+
+kb. roa (2).
+
+perahu kecil . ana kènii.
+
+perak ks. pudhi (2).
+
+perampok . parapo.
+
+peraturan kb. atora.
+
+perawat . dhèu pake na'i (1).
+
+perayaan . kalela.
+
+perbaiki kkt. lalau;
+
+kkt. lalau-lalo'o;
+
+kkt. lalau-lo'o;
+
+kkt. pabe'a.
+
+perbuatan . ho'a;
+
+kb. tatao (1);
+
+Idiom. madhaj'ara (1).
+
+percaya . lèka (2);
+
+kkt. parcaya.
+
+percayakan kkt. pangèd'u.
+
+percuma kket. iia dara.
+
+perduli kki. pusi.
+
+perempuan - bèni;
+
+kb. bhèni;
+
+. dhèu bhèni.
+
+pergi kki. dhiu;
+
+kki. kako.
+
+pertimbangkan
+
+perhatian Idiom. madha-dhilu.
+
+perhatikan kkt.nad'o;
+
+kkt. ladhe-leru;
+
+kkt. pangad'o;
+
+Idiom. nare dara.
+
+peribahasa . hini .
+
+perilaku . kakako (2).
+
+peringatkan kkt. kai (2).
+
+perintah kb. paredha (3);
+
+kkt. paredha.
+
+peristiwa .
+
+periuk . èru.
+
+perjalanan . kakako (1).
+
+perjelas kkt. pamèu (2).
+
+perkara . lii langu.
+
+perkara di dalam Idiom. dara èmu
+
+miu.
+
+perlu kki. pusi;
+
+Aux. parluu.
+
+permisi kki.palangu;
+
+kki. palangu lii.
+
+permulaan . kapua (2).
+
+perpanjang kki.tuhu;
+
+kkt. pamadhera.
+
+perpecahan kb. mamae.
+
+perpendek kkt. pab'ab'e.
+
+persalahkan kki. pasala;
+
+kkt. galaa .
+
+persetan Idiom. ai-hèb'a.
+
+persingkat kkt. paca'èta.
+
+persis TAM. re.
+
+pertama kket.uru;
+
+kket. uuru.
+
+pertimbangan . dad'oo.
+
+pertimbangkan Idiom. d'ara
+
+madhera;
+
+Idiom. dara madhera,
+
+lihat: madhera;
+
+
+
+
+
+
+
+R-r
+
+
+
+
+
+
+S-s
+
+
+
+
+
+
+
+
+
+
+
+
+
+ & kb. kabicu. & [t]2*supaya & phub. ho; 
+
+ & kki. dale; &  & phub. sèna ka. 
+
+ & kkt. dèi; & surat & . sasuri. 
+
+ & kkt. neo. & suruh & kkt. pajuu; 
+
+sukacita & ks. karej'e-karae. &  & kkt. pajuu-paleha; 
+
+[t]2*suku & kb. suku; &  & kkt. paleha; 
+
+ & kb. udhu-rasa. &  & kkt. pua. 
+
+suling & . sakino. & surut & kb. dhasi mara. 
+
+sulit & kki. carui. & susah & kki. j'èra. 
+
+sulit, ke-an & kb. sasusa. &  &  
+
+sumber & kb. kapua (2). &  &  
+
+sumbur & kkt. sabhuu. & susun & kkt. lalau. 
+
+sumur & kb. madha èi. & susut & kki. karuku. 
+
+sumur kering & kb. èi madhe. & syair & . 
+
+sunat & kkt. bèka  (2). &  &  
+
+sungai & kb. loko. &  &  
+
+
+
+
+
+
+
+
+
+
+
+
+)
+
+
+
+
+
+
+
+
+
+W - w
+
+
+
+
+
+
+
+yaitu kki.nuka (2). yang Rel. dhu . yakni kki. nuka (2).
+
+Z - z
+
+zaman ;
+
+kb. tebho .
+
+Kata Pokok Jumlah: 1822
+
+

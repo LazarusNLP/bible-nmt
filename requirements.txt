@@ -10,3 +10,4 @@ tqdm
 ijson
 numpy
 evaluate
+scikit-learn

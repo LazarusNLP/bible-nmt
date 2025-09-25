@@ -1,0 +1,249 @@
+source_word,confidence_score,target_word,pos,page_number
+semua,2.603206857502623e-44,mèu-mèu,adverb,30
+semua,2.603206857502623e-44,aa'i,quantifier,30
+semua,2.603206857502623e-44,aa'i-aa'i,quantifier,30
+bangkit,2.63463352266455e-44,kèdi.,verb,3
+liar,2.868370480620601e-44,hui,verb,18
+kerja,3.067135584657135e-44,sasab'a,noun,16
+kerja,3.067135584657135e-44,saba,verb,16
+kerja,3.067135584657135e-44,sab'a,verb,16
+kerja,3.067135584657135e-44,sab'e,verb,16
+kesalahan,3.1103774697562e-44,sasala,noun,16
+kesalahan,3.1103774697562e-44,sasala-sasigo,noun,16
+kesalahan,3.1103774697562e-44,sigo,noun,16
+budak,3.2895280075606894e-44,ènu,noun,5
+itu,3.3392428568941734e-44,èèna,demonstrative,12
+itu,3.3392428568941734e-44,na,demonstrative,12
+itu,3.3392428568941734e-44,nèi,demonstrative,12
+api,3.4409379418585e-44,ai,noun,2
+cukup,3.720075976020836e-44,sange,verb,7
+cukup,3.720075976020836e-44,nia,quantifier,7
+hebat,3.977064927093025e-44,ele madha ngaa,idiom,11
+panas,4.118314969584026e-44,pana,adjective,23
+panas,4.118314969584026e-44,sagoro,adjective,23
+panas,4.118314969584026e-44,sag'oro,adjective,23
+sejak,4.19269653652453e-44,karèi,adverb,30
+sejak,4.19269653652453e-44,krèi,adverb,30
+bumi,4.26970223978657e-44,rai-haha,noun,6
+tanda,4.26970223978657e-44,tadha,noun,33
+bintang,4.386993285938256e-44,hua-hètu,noun,5
+tinggalkan,4.4315264319453343e-44,tèke,verb,35
+tinggalkan,4.4315264319453343e-44,bhera,verb,35
+lagi,4.4537395506244904e-44,hari,particle,17
+kantong,4.696624652801896e-44,kanoto,noun,14
+rakyat,5.100018115271596e-44,kaba rai,noun,27
+rakyat,5.100018115271596e-44,dhèu kaba rai,noun,27
+dahulu,5.211376851316794e-44,uru,adverb,7
+dahulu,5.211376851316794e-44,uuru,adverb,7
+gembala,5.211376851316794e-44,ana madhutu.,noun,9
+paksa,5.446886122594147e-44,seti,verb,23
+paksa,5.446886122594147e-44,laka-seti,verb,23
+paksa,5.446886122594147e-44,pakaseti,verb,23
+paksa,5.446886122594147e-44,palaka,verb,23
+barang,5.572501702176795e-44,mèdha.,noun,3
+bukti,5.572501702176795e-44,bukti,noun,6
+telinga,5.703295078364821e-44,rèu dhilu,noun,33
+hendak,5.840077642719674e-44,dèi,verb,11
+hendak,5.840077642719674e-44,no'o,verb,11
+begini,5.983131491810999e-44,sèmi ne'e ka.,comparative,3
+tiga,5.983131491810999e-44,tèlu,numeral,34
+tongkat,6.132141839267185e-44,tatea,noun,35
+barat,6.288635350306943e-44,haa.,noun,3
+zaman,6.288635350306943e-44,taa,noun,37
+zaman,6.288635350306943e-44,tebho,noun,37
+agar,6.480152809104158e-44,ho,conjunction,1
+agar,6.480152809104158e-44,sèna ka,conjunction,1
+terdapat,6.623633535052521e-44,rage,verb,34
+terdapat,6.623633535052521e-44,abhu,verb,34
+atap,6.80354698574037e-44,rèu èmu,noun,2
+sungai,6.80354698574037e-44,loko,noun,32
+makanan,6.992541575039516e-44,nganga'a,noun,19
+cincin,7.191099578907972e-44,kadeli,noun,7
+tuan,7.191099578907972e-44,lamatua,noun,35
+menyusahkan,7.400474292505228e-44,paj'èra,verb,21
+asal,7.620516059414765e-44,sad'i,conjunction,2
+perlu,7.620516059414765e-44,pusi,verb,25
+perlu,7.620516059414765e-44,parluu,auxiliary,25
+suka,7.853380623286302e-44,dale,verb,32
+suka,7.853380623286302e-44,dèi,verb,32
+suka,7.853380623286302e-44,neo,verb,32
+gemetar,8.098218439434987e-44,karèbha;,verb,9
+gemetar,8.098218439434987e-44,rèbha-rèbha.,verb,9
+pindah,8.098218439434987e-44,pidha,verb,26
+atau,8.358208348416103e-44,do,conjunction,2
+tumbuh,8.358208348416103e-44,muri,verb,35
+diam-diam,9.231708106982551e-44,mau-mau,adverb,8
+diam-diam,9.231708106982551e-44,nee-nee,adverb,8
+rasa,9.231708106982551e-44,mamènyi,noun,27
+kami,9.56053886147636e-44,ji'i,pronoun,14
+kami,9.56053886147636e-44,ng-,pronoun,14
+kami,9.56053886147636e-44,nga,pronoun,14
+kami,9.56053886147636e-44,nga-,pronoun,14
+suka,9.56053886147636e-44,dale,verb,32
+suka,9.56053886147636e-44,dèi,verb,32
+suka,9.56053886147636e-44,neo,verb,32
+turunkan,9.56053886147636e-44,papuru,verb,36
+turunkan,9.56053886147636e-44,saguru,verb,36
+biarkan,9.909006506858382e-44,hia,verb,5
+biarkan,9.909006506858382e-44,ai-hèb'a,idiom,5
+harga,9.909006506858382e-44,kabua,noun,11
+lebih,9.909006506858382e-44,risi,adverb,18
+lebih,9.909006506858382e-44,seli,adverb,18
+lebih,9.909006506858382e-44,lènge,quantifier,18
+sakit,9.909006506858382e-44,pèda,verb,28
+jual,1.0678625126143476e-43,pahia,verb,13
+jual,1.0678625126143476e-43,pahie,verb,13
+kasih,1.0678625126143476e-43,sasue,noun,14
+mereka,1.0678625126143476e-43,ra,pronoun,21
+mereka,1.0678625126143476e-43,ra-,pronoun,21
+mereka,1.0678625126143476e-43,rèngu,pronoun,21
+mereka,1.0678625126143476e-43,si,pronoun,21
+mereka,1.0678625126143476e-43,-si,pronoun,21
+mundur,1.0678625126143476e-43,hari kabodho,verb,21
+baik-baik,1.110331921212895e-43,paie.,adverb,3
+cincin,1.110331921212895e-43,kadeli,noun,7
+madu,1.1558765787278685e-43,dhua nasu oni,noun,19
+pemilik,1.1558765787278685e-43,lamatua,noun,24
+allah,1.2047342446302915e-43,Ama Lamatua,noun,1
+allah,1.2047342446302915e-43,Lamatua,noun,1
+sebaiknya,1.2047342446302915e-43,hua iia,conjunction,30
+sebaiknya,1.2047342446302915e-43,hua iie,conjunction,30
+kepada,1.257164764701308e-43,dènga,preposition,15
+kepada,1.257164764701308e-43,dènge,preposition,15
+kepada,1.257164764701308e-43,d'ènge,preposition,15
+kepada,1.257164764701308e-43,mi,preposition,15
+memang,1.257164764701308e-43,mema,particle,20
+minta,1.257164764701308e-43,manèngi,verb,21
+minta,1.257164764701308e-43,manèngi-mangaj'i,verb,21
+teliti,1.257164764701308e-43,patigi,verb,33
+tepat,1.257164764701308e-43,lèke,verb,34
+tepat,1.257164764701308e-43,tèka dara,verb,34
+beban,1.3137149963003641e-43,babia.,noun,3
+janda,1.3748697491545418e-43,bhèni balu,noun,12
+jawab,1.3748697491545418e-43,bala,verb,13
+jawab,1.3748697491545418e-43,dhaa,verb,13
+adik,1.4408871477872577e-43,ari,noun,1
+secepatnya,1.4408871477872577e-43,mema,particle,30
+laki-laki,1.5124925703476792e-43,dhèu mone,noun,17
+laki-laki,1.5124925703476792e-43,mone,noun,17
+tiba-tiba,1.5124925703476792e-43,kabèdhi,adverb,34
+tiba-tiba,1.5124925703476792e-43,sahèka,adverb,34
+tiba-tiba,1.5124925703476792e-43,cag'ag'a,adverb,34
+utusan,1.5124925703476792e-43,ana pajuu-paleha,noun,36
+utusan,1.5124925703476792e-43,ana paj'uu-paleha,noun,36
+halus,1.5903577624374317e-43,lutu,adjective,10
+haram,1.5903577624374317e-43,luri,verb,10
+haram,1.5903577624374317e-43,laluri,adjective,10
+singgah,1.5903577624374317e-43,dhuli,verb,31
+bangun,1.6752442888694342e-43,kèdi.,verb,3
+ceritakan,1.6752442888694342e-43,lole,verb,7
+melalui,1.6752442888694342e-43,re,preposition,20
+ambil,1.7680177411354253e-43,nare,verb,1
+ke,1.7680177411354253e-43,asa,preposition,14
+ke,1.7680177411354253e-43,sa,preposition,14
+kedua,1.7680177411354253e-43,kadua,numeral,15
+mana-mana,1.7680177411354253e-43,mia-mia,noun,19
+senang,1.7680177411354253e-43,dèi,verb,30
+senang,1.7680177411354253e-43,karae,adjective,30
+senang,1.7680177411354253e-43,karej'e,adjective,30
+senang,1.7680177411354253e-43,karej'e-karae,adjective,30
+agar,1.869664492032213e-43,ho,conjunction,1
+agar,1.869664492032213e-43,sèna ka,conjunction,1
+awan,1.869664492032213e-43,ra'i liru,noun,2
+itu,1.869664492032213e-43,èèna,demonstrative,12
+itu,1.869664492032213e-43,na,demonstrative,12
+itu,1.869664492032213e-43,nèi,demonstrative,12
+lempar,1.869664492032213e-43,core,verb,18
+lempar,1.869664492032213e-43,pèci,verb,18
+meskipun,1.869664492032213e-43,masi ka,conjunction,21
+perjalanan,1.869664492032213e-43,kakako,noun,25
+sepakat,1.869664492032213e-43,rare lii èci,verb,31
+sepakat,1.869664492032213e-43,pare'a,verb,31
+tanggung,1.869664492032213e-43,tago,verb,33
+hukum,1.9815096402104172e-43,aree,verb,11
+hukum,1.9815096402104172e-43,huku,verb,11
+kekayaan,1.9815096402104172e-43,doi-dhari,noun,15
+kekayaan,1.9815096402104172e-43,kakaja,noun,15
+kekayaan,1.9815096402104172e-43,kakaja-su'i,noun,15
+berlutut,2.1046706598045952e-43,kètu urutuu,verb,4
+biji,2.1046706598045952e-43,lamusi,noun,5
+lari,2.1046706598045952e-43,rai,verb,18
+pandang,2.1046706598045952e-43,ladhe,verb,23
+kampung,2.241082479114084e-43,rae,noun,14
+pemilik,3.202587249955076e-43,lamatua,noun,24
+lari,3.474876708239255e-43,rai,verb,18
+kesalahan,5.034222014518825e-43,sasala,noun,16
+kesalahan,5.034222014518825e-43,sasala-sasigo,noun,16
+kesalahan,5.034222014518825e-43,sigo,noun,16
+ambil,7.997739975804983e-43,nare,verb,1
+sejak,1.0567243691409198e-42,karèi,adverb,30
+sejak,1.0567243691409198e-42,krèi,adverb,30
+budak,1.2329059029637008e-42,ènu,noun,5
+mundur,0.0565500043215515,hari kabodho,verb,21
+itu,0.0771394851849444,èèna,demonstrative,12
+itu,0.0771394851849444,na,demonstrative,12
+itu,0.0771394851849444,nèi,demonstrative,12
+kepada,0.10166420545248,dènga,preposition,15
+kepada,0.10166420545248,dènge,preposition,15
+kepada,0.10166420545248,d'ènge,preposition,15
+kepada,0.10166420545248,mi,preposition,15
+berlutut,0.1625320607093257,kètu urutuu,verb,4
+mereka,0.1961138345154035,ra,pronoun,21
+mereka,0.1961138345154035,ra-,pronoun,21
+mereka,0.1961138345154035,rèngu,pronoun,21
+mereka,0.1961138345154035,si,pronoun,21
+mereka,0.1961138345154035,-si,pronoun,21
+dahulu,0.2019227662480942,uru,adverb,7
+dahulu,0.2019227662480942,uuru,adverb,7
+semua,0.2267221545394132,mèu-mèu,adverb,30
+semua,0.2267221545394132,aa'i,quantifier,30
+semua,0.2267221545394132,aa'i-aa'i,quantifier,30
+ke,0.2338115102442687,asa,preposition,14
+ke,0.2338115102442687,sa,preposition,14
+memang,0.2582983414301174,mema,particle,20
+atau,0.2583112566700671,do,conjunction,2
+jawab,0.2689230499415547,bala,verb,13
+jawab,0.2689230499415547,dhaa,verb,13
+bangun,0.2709448457590501,kèdi.,verb,3
+lagi,0.2710911954866301,hari,particle,17
+makanan,0.277126832092085,nganga'a,noun,19
+perjalanan,0.2884019823447882,kakako,noun,25
+melalui,0.2895723788263746,re,preposition,20
+laki-laki,0.303082570710902,dhèu mone,noun,17
+laki-laki,0.303082570710902,mone,noun,17
+bumi,0.3158303742079451,rai-haha,noun,6
+allah,0.3215249928717865,Ama Lamatua,noun,1
+allah,0.3215249928717865,Lamatua,noun,1
+lebih,0.3407010065366809,risi,adverb,18
+lebih,0.3407010065366809,seli,adverb,18
+lebih,0.3407010065366809,lènge,quantifier,18
+mereka,0.3498992580757988,ra,pronoun,21
+mereka,0.3498992580757988,ra-,pronoun,21
+mereka,0.3498992580757988,rèngu,pronoun,21
+mereka,0.3498992580757988,si,pronoun,21
+mereka,0.3498992580757988,-si,pronoun,21
+kedua,0.3611615188770526,kadua,numeral,15
+gembala,0.370959272510661,ana madhutu.,noun,9
+kami,0.4106541101326197,ji'i,pronoun,14
+kami,0.4106541101326197,ng-,pronoun,14
+kami,0.4106541101326197,nga,pronoun,14
+kami,0.4106541101326197,nga-,pronoun,14
+kami,0.4119282892501749,ji'i,pronoun,14
+kami,0.4119282892501749,ng-,pronoun,14
+kami,0.4119282892501749,nga,pronoun,14
+kami,0.4119282892501749,nga-,pronoun,14
+baik-baik,0.4273392862006179,paie.,adverb,3
+adik,0.4321480677681048,ari,noun,1
+bumi,0.455098226915441,rai-haha,noun,6
+begini,0.4782785383454362,sèmi ne'e ka.,comparative,3
+laki-laki,0.4988339520653798,dhèu mone,noun,17
+laki-laki,0.4988339520653798,mone,noun,17
+tiga,0.5451000081284777,tèlu,numeral,34
+sungai,0.6119026975754438,loko,noun,32
+tongkat,0.6449825608459645,tatea,noun,35
+biarkan,0.683661750832408,hia,verb,5
+biarkan,0.683661750832408,ai-hèb'a,idiom,5
+makanan,0.7218542718533126,nganga'a,noun,19
+jual,0.7580438844218378,pahia,verb,13
+jual,0.7580438844218378,pahie,verb,13
+tuan,0.8094647922629407,lamatua,noun,35

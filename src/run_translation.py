@@ -29,6 +29,7 @@ import logging
 import wandb
 from sklearn.model_selection import train_test_split
 import random
+import pandas as pd
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -58,6 +59,10 @@ def parse_args():
     parser.add_argument("--source_text_path", type=str, default=None, help="Path to source language scripture text file")
     parser.add_argument("--target_text_path", type=str, default=None, help="Path to target language scripture text file")
     parser.add_argument("--verse_text_path", type=str, default=None, help="Path to verse reference file (e.g., GEN 1:1)")
+    # Additional CSV data arguments
+    parser.add_argument("--additional_csv_path", type=str, default=None, help="Path to additional CSV training data")
+    parser.add_argument("--csv_source_col", type=str, default="source_text", help="Name of source text column in CSV")
+    parser.add_argument("--csv_target_col", type=str, default="target_text", help="Name of target text column in CSV")
     
     # Model arguments
     parser.add_argument("--model_name", type=str, default="facebook/nllb-200-distilled-600M")
@@ -213,6 +218,44 @@ def load_ebible_local_ind_corpus(src_lang, tgt_lang):
     
     logger.info(f"Dataset splits - Train: {len(dataset['train'])}, Val: {len(dataset['validation'])}, Test: {len(dataset['test'])}")
     return dataset
+
+
+def load_csv_data(csv_path, source_col="source_text", target_col="target_text"):
+    """Load parallel translation data from CSV file.
+    
+    Args:
+        csv_path: Path to CSV file
+        source_col: Name of source text column (default: "source_text")
+        target_col: Name of target text column (default: "target_text")
+    
+    Returns:
+        Dataset with 'source' and 'target' columns
+    """
+    logger.info(f"Loading CSV data from: {csv_path}")
+    
+    df = pd.read_csv(csv_path)
+    
+    # Check if columns exist
+    if source_col not in df.columns:
+        raise ValueError(f"Source column '{source_col}' not found in CSV. Available columns: {list(df.columns)}")
+    if target_col not in df.columns:
+        raise ValueError(f"Target column '{target_col}' not found in CSV. Available columns: {list(df.columns)}")
+    
+    # Filter out empty/null rows
+    df = df.dropna(subset=[source_col, target_col])
+    df = df[(df[source_col].str.strip() != '') & (df[target_col].str.strip() != '')]
+    
+    # Create list of dictionaries for Dataset.from_list
+    data_pairs = []
+    for _, row in df.iterrows():
+        data_pairs.append({
+            "source": str(row[source_col]).strip(),
+            "target": str(row[target_col]).strip()
+        })
+    
+    logger.info(f"Loaded {len(data_pairs)} parallel translation pairs from CSV")
+    
+    return Dataset.from_list(data_pairs)
 
 
 def load_scripture_files(source_path, target_path, verse_path=None, seed=114):
@@ -502,7 +545,7 @@ def main(args):
         config=vars(args)
     )
     
-    # Load dataset
+    # Load main dataset
     logger.info(f"Loading dataset: {args.dataset_name}")
     if args.dataset_name == "scripture_files":
         if not args.source_text_path or not args.target_text_path:
@@ -516,6 +559,19 @@ def main(args):
         dataset = load_ebible_local_ind_corpus(args.src_lang, args.tgt_lang)
     else:
         raise ValueError(f"Unknown dataset: {args.dataset_name}")
+    
+    # Load and concatenate additional CSV data if provided
+    if args.additional_csv_path:
+        logger.info(f"Loading additional CSV data from: {args.additional_csv_path}")
+        additional_data = load_csv_data(args.additional_csv_path, args.csv_source_col, args.csv_target_col)
+        
+        # Concatenate additional data with existing training data only
+        logger.info(f"Original train dataset size: {len(dataset['train'])}")
+        dataset['train'] = concatenate_datasets([dataset['train'], additional_data])
+        logger.info(f"New train dataset size after adding CSV data: {len(dataset['train'])}")
+        
+        # Update dataset info for logging
+        logger.info(f"Final dataset splits - Train: {len(dataset['train'])}, Val: {len(dataset['validation'])}, Test: {len(dataset['test'])}")
     
     # Set torch dtype
     dtype_map = {

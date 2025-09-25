@@ -1,0 +1,1 @@
+export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH && detex -n 2025_09_09_5abe3973251282b4e7a9g.tex > dhao_dictionary.txt
