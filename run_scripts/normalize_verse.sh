@@ -1,6 +1,6 @@
 python scripts/normalize_text.py \
-    "ebible-corpus/luang/lex-lex.txt" \
-    -o "ebible-corpus/luang/lex-norm.txt" \
+    "ebible-corpus/dhao-eng/nfa-nfa.txt" \
+    -o "ebible-corpus/dhao-eng/nfa-nfa-norm.txt" \
     --preserve-case
 
 # python scripts/normalize_text.py \

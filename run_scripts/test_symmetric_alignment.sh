@@ -42,9 +42,9 @@ TEST_VERSIONS=(
 )
 
 # Paths
-ENGLISH_CORPUS_DIR="/data/projects/punim0478/setiawand/bible-nmt/ebible-corpus/eng/corpus"
-DHAO_CORPUS_PATH="/data/projects/punim0478/setiawand/bible-nmt/ebible-corpus/dhao-eng/nfa-nfa.txt"
-VREF_PATH="/data/projects/punim0478/setiawand/bible-nmt/ebible-corpus/vref.txt"
+ENGLISH_CORPUS_DIR="/Users/davidsamuel/Documents/Unimelb Masters/Thesis/bible-nmt/ebible-corpus/eng/corpus"
+DHAO_CORPUS_PATH="/Users/davidsamuel/Documents/Unimelb Masters/Thesis/bible-nmt/ebible-corpus/dhao-eng/nfa-nfa.txt"
+VREF_PATH="/Users/davidsamuel/Documents/Unimelb Masters/Thesis/bible-nmt/ebible-corpus/vref.txt"
 OUTPUT_DIR="./test_results/symmetric_alignment"
 TEST_TEMP_DIR="./test_temp"
 
