@@ -48,8 +48,8 @@ def normalize_text(text, preserve_case=False, normalize_punctuation=True, normal
     
     if normalize_punctuation:
         # Normalize punctuation for better alignment
-        text = text.replace(';', ',')    # Convert semicolons to commas
-        text = text.replace(':', ',')    # Convert colons to commas
+        # text = text.replace(';', ',')    # Convert semicolons to commas
+        # text = text.replace(':', ',')    # Convert colons to commas
         text = text.replace('—', '-')    # Em dash to hyphen
         text = text.replace('–', '-')    # En dash to hyphen
         

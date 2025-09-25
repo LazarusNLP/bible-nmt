@@ -205,4 +205,13 @@ wandb/
 slurm*
 *slurm*
 fast_align
+<<<<<<< HEAD
 giza-pp
+=======
+results/
+checkpoint*
+=*
+*.gizacfg
+test_results/
+test_temp
+>>>>>>> 673cefb (Save symmetric alignment script)
