@@ -1,5 +1,4 @@
 #!/bin/bash
-export GEMINI_API_KEY="AIzaSyC0N8M7QkePL3pOlVYchXzecwkfEoYi_D0"
 # vLLM Post-Editing using glossary/lexicon mode
 # Demonstrates the new glossary-based few-shot prompting functionality
 
