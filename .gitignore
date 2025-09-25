@@ -205,6 +205,4 @@ wandb/
 slurm*
 *slurm*
 fast_align
-results/
-checkpoint*
-=*
+giza-pp
