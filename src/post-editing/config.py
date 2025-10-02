@@ -30,14 +30,17 @@ class PostEditingConfig:
     
     # Processing configuration
     prompt: str = "default"
-    num_few_shot: int = 5
+    num_few_shot: Optional[int] = None  # Will be set based on vectorizer type if None
     vectorizer: str = "bm25"
     few_shot_mode: str = "parallel"
     glossary_mode: str = "smart"
     max_glossary_entries: Optional[int] = None
+    top_n_per_word: int = 5  # For word_parallel vectorizer: number of top matches per word
+    top_n_per_word_glossary: int = 5  # For word_fuzzy glossary mode: number of top glossary matches per word
     batch_size: Optional[int] = None
     num_workers: int = 8
     batch_timeout: int = 7200
+    translation_mode: bool = False  # If True, translate directly from source instead of post-editing
     
     # Output configuration
     output_dir: str = "./results"
@@ -45,6 +48,13 @@ class PostEditingConfig:
     
     def __post_init__(self):
         """Validate configuration after initialization."""
+        # Set default num_few_shot based on vectorizer type if not explicitly provided
+        if self.num_few_shot is None:
+            if self.vectorizer == "word_parallel":
+                self.num_few_shot = -1  # Use all word-matched examples
+            else:
+                self.num_few_shot = 5  # Standard default
+        
         self.validate()
     
     def validate(self):
@@ -82,6 +92,8 @@ class PostEditingConfig:
         
         if self.few_shot_mode == "both" and (not self.few_shot_corpus_path or not self.glossary_path):
             raise ValueError("Both few_shot_corpus_path and glossary_path are required when few_shot_mode is 'both'")
+        
+        # "none" mode requires no additional resources (LLM-only translation)
     
     def get_model_config(self) -> Dict[str, Any]:
         """Get model-specific configuration."""
@@ -116,14 +128,17 @@ class PostEditingConfig:
             tgt_lang_name=args.tgt_lang_name,
             max_samples=getattr(args, 'max_samples', None),
             prompt=getattr(args, 'prompt', 'default'),
-            num_few_shot=getattr(args, 'num_few_shot', 5),
+            num_few_shot=getattr(args, 'num_few_shot', None),
             vectorizer=getattr(args, 'vectorizer', 'bm25'),
             few_shot_mode=getattr(args, 'few_shot_mode', 'parallel'),
             glossary_mode=getattr(args, 'glossary_mode', 'smart'),
             max_glossary_entries=getattr(args, 'max_glossary_entries', None),
+            top_n_per_word=getattr(args, 'top_n_per_word', 3),
+            top_n_per_word_glossary=getattr(args, 'top_n_per_word_glossary', 3),
             batch_size=getattr(args, 'batch_size', None),
             num_workers=getattr(args, 'num_workers', 8),
             batch_timeout=getattr(args, 'batch_timeout', 7200),
+            translation_mode=getattr(args, 'translation_mode', False),
             output_dir=args.output_dir,
             debug=getattr(args, 'debug', False),
         )
@@ -145,9 +160,15 @@ class PostEditingConfig:
         print(f"Max Samples: {self.max_samples or 'All'}")
         print(f"Prompt: {self.prompt}")
         print(f"Vectorizer: {self.vectorizer}")
-        print(f"Few-shot Examples: {self.num_few_shot}")
+        if self.vectorizer == "word_parallel" and self.num_few_shot == -1:
+            print(f"Few-shot Examples: ALL word-matched examples (dynamic)")
+        else:
+            print(f"Few-shot Examples: {self.num_few_shot}")
         print(f"Max Glossary Entries: {self.max_glossary_entries or 'All available'}")
+        print(f"Top-N Per Word (word_parallel): {self.top_n_per_word}")
+        print(f"Top-N Per Word Glossary (word_fuzzy): {self.top_n_per_word_glossary}")
         print(f"Batch Size: {self.batch_size or 'Auto'}")
+        print(f"Translation Mode: {'Direct Translation' if self.translation_mode else 'Post-Editing'}")
         print(f"Output Directory: {self.output_dir}")
         print(f"Debug Mode: {self.debug}")
         print("="*50)

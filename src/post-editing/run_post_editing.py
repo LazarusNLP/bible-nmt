@@ -14,7 +14,13 @@ Usage:
 import argparse
 import os
 import sys
+import warnings
 from pathlib import Path
+from typing import Union, List
+
+# Suppress aiohttp unclosed session warnings at script end
+warnings.filterwarnings("ignore", message="Unclosed client session")
+warnings.filterwarnings("ignore", message="Unclosed connector")
 
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
@@ -34,6 +40,7 @@ try:
     from utils.processing import ProcessingEngine
     from utils.validation import ArgumentValidator
     from utils.logging import setup_logging
+    from utils.timing import TimingTracker
     from prompt import list_available_prompts
 except ImportError as e:
     print(f"Import error: {e}")
@@ -53,9 +60,15 @@ Examples:
     --csv_path data.csv --src en --tgt id --src_lang_name English --tgt_lang_name Indonesian \\
     --output_dir ./results
 
-  # Using GPT API with few-shot examples
+  # Using GPT API with few-shot examples (single file)
   python run_post_editing_fixed.py --model_type gpt --model_name gpt-4o \\
     --csv_path data.csv --few_shot_corpus_path corpus.csv --vectorizer sbert \\
+    --src en --tgt id --src_lang_name English --tgt_lang_name Indonesian \\
+    --output_dir ./results
+
+  # Using GPT API with multiple few-shot corpus files (concatenated)
+  python run_post_editing_fixed.py --model_type gpt --model_name gpt-4o \\
+    --csv_path data.csv --few_shot_corpus_path corpus1.csv corpus2.csv corpus3.csv --vectorizer sbert \\
     --src en --tgt id --src_lang_name English --tgt_lang_name Indonesian \\
     --output_dir ./results
         """
@@ -72,9 +85,9 @@ Examples:
     # Data configuration
     data_group = parser.add_argument_group('Data Configuration')
     data_group.add_argument("--csv_path", type=str, required=True,
-                          help="Path to CSV file with source_text, target_text, and pred_target_text columns")
-    data_group.add_argument("--few_shot_corpus_path", type=str,
-                          help="Path to few-shot corpus file (CSV with source_text/target_text columns or text file)")
+                          help="Path to CSV file with source_text, target_text, and pred_text columns")
+    data_group.add_argument("--few_shot_corpus_path", type=str, nargs='+',
+                          help="Path(s) to few-shot corpus file(s) (CSV with source_text/target_text columns or text file). Can accept multiple paths to concatenate files.")
     data_group.add_argument("--glossary_path", type=str,
                           help="Path to glossary file (CSV with source_word, target_word, and optional pos columns)")
     data_group.add_argument("--src", type=str, required=True,
@@ -92,27 +105,35 @@ Examples:
     proc_group = parser.add_argument_group('Processing Configuration')
     proc_group.add_argument("--prompt", type=str, default="default",
                           help=f"Prompt template key. Options: {', '.join(list_available_prompts())}")
-    proc_group.add_argument("--num_few_shot", type=int, default=5,
-                          help="Number of few-shot examples to use")
+    proc_group.add_argument("--num_few_shot", type=int, default=None,
+                          help="Number of few-shot examples to use (default: 5, or -1 for word_parallel mode to use all word-matched examples)")
     proc_group.add_argument("--vectorizer", type=str, default="bm25", 
-                          choices=["bm25", "tfidf", "sbert", "chrf_rag", "word_lcs", "full"],
-                          help="Similarity method for few-shot selection ('full' uses entire corpus)")
+                          choices=["bm25", "tfidf", "sbert", "chrf_rag", "word_parallel", "all_mpnet", "bge", "full"],
+                          help="Similarity method for few-shot selection ('all_mpnet' uses all-mpnet-base-v2, 'bge' uses BAAI/bge-large-en-v1.5, 'full' uses entire corpus)")
     proc_group.add_argument("--few_shot_mode", type=str, default="parallel",
-                          choices=["parallel", "glossary", "both"],
-                          help="Few-shot mode: 'parallel' (examples), 'glossary' (terminology), or 'both'")
+                          choices=["parallel", "glossary", "both", "none"],
+                          help="Few-shot mode: 'parallel' (examples), 'glossary' (terminology), 'both', or 'none' (LLM-only, no few-shot)")
     proc_group.add_argument("--glossary_mode", type=str, default="smart",
-                          choices=["smart", "full"],
-                          help="Glossary mode: 'smart' (intelligent matching) or 'full' (entire glossary)")
+                          choices=["smart", "full", "word_fuzzy"],
+                          help="Glossary mode: 'smart' (intelligent matching), 'full' (entire glossary), or 'word_fuzzy' (fuzzy matching per word)")
     proc_group.add_argument("--max_glossary_entries", type=int, default=None,
                           help="Maximum number of glossary entries per input (default: use all available)")
+    proc_group.add_argument("--top_n_per_word", type=int, default=5,
+                          help="For word_parallel vectorizer: number of top matches to retrieve per word")
+    proc_group.add_argument("--top_n_per_word_glossary", type=int, default=5,
+                          help="For word_fuzzy glossary mode: number of top glossary matches to retrieve per word")
     proc_group.add_argument("--batch_size", type=int,
                           help="Process messages in batches (optional)")
     proc_group.add_argument("--num_workers", type=int, default=8,
                           help="Number of worker threads for API calls")
     proc_group.add_argument("--batch_timeout", type=int, default=7200,
                           help="Timeout for batch jobs in seconds (Gemini only)")
+    proc_group.add_argument("--delay_between_batches", type=float, default=0.0,
+                          help="Delay in seconds between batches for rate limiting (API models only)")
     proc_group.add_argument("--sequential", action="store_true",
                           help="Process requests sequentially without concurrency (disables batch processing and threading)")
+    proc_group.add_argument("--translation-mode", action="store_true",
+                          help="Use direct translation mode instead of post-editing mode (translate from source text directly)")
     
     # Output configuration
     output_group = parser.add_argument_group('Output Configuration')
@@ -122,39 +143,47 @@ Examples:
                             help="Enable debug mode")
     output_group.add_argument("--prompt-only", action="store_true",
                             help="Print final LLM prompt for first sample and exit (for debugging)")
+    output_group.add_argument("--disable-metrics", action="store_true",
+                            help="Disable individual metrics calculation for faster processing (metrics calculated only at the end)")
     output_group.add_argument("--log_file", type=str,
                             help="Optional log file path")
     
     return parser.parse_args()
 
 
-def create_model(model_type: str, model_name: str):
+def create_model(model_type: str, model_name: str, batch_size: int = None, delay_between_batches: float = 0.0):
     """Create model instance based on type and name."""
     if model_type == "gpt":
         return GPTModel(model_name)
     elif model_type == "gemini":
-        return GeminiModel(model_name)
+        # Use original Gemini implementation with complex async handling
+        return GeminiModel(model_name, batch_size=batch_size, delay_between_batches=delay_between_batches)
     elif model_type == "vllm":
+        # VLLMModel now automatically uses DEFAULT_MODEL_CONFIGS from constants
         return VLLMModel(model_name)
     else:
         raise ValueError(f"Unsupported model type: {model_type}")
 
 
-def create_few_shot_selector(vectorizer: str, few_shot_corpus_path: str, few_shot_mode: str) -> FewShotSelector:
+def create_few_shot_selector(vectorizer: str, few_shot_corpus_path: Union[str, List[str]], few_shot_mode: str, top_n_per_word: int = 3) -> FewShotSelector:
     """Create few-shot selector if corpus is provided and mode requires it."""
     if few_shot_corpus_path and few_shot_mode in ["parallel", "both"]:
-        corpus_id = f"corpus_{few_shot_corpus_path}_{vectorizer}"
-        return FewShotSelector(vectorizer, corpus_id)
+        # Create corpus_id from path(s) - handle both single path and list of paths
+        if isinstance(few_shot_corpus_path, list):
+            corpus_id = f"corpus_{'_'.join([os.path.basename(p) for p in few_shot_corpus_path])}_{vectorizer}"
+        else:
+            corpus_id = f"corpus_{few_shot_corpus_path}_{vectorizer}"
+        return FewShotSelector(vectorizer, corpus_id, top_n_per_word)
     return None
 
 
-def create_glossary_selector(glossary_path: str, few_shot_mode: str, glossary_mode: str = "smart") -> GlossarySelector:
+def create_glossary_selector(glossary_path: str, few_shot_mode: str, glossary_mode: str = "smart", top_n_per_word_glossary: int = 3) -> GlossarySelector:
     """Create glossary selector if glossary is provided and mode requires it."""
     if glossary_path and few_shot_mode in ["glossary", "both"]:
         # Load glossary
         data_handler = DataHandler()
         glossary = data_handler.load_glossary(glossary_path)
-        return GlossarySelector(glossary, mode=glossary_mode)
+        return GlossarySelector(glossary, mode=glossary_mode, top_n_per_word_glossary=top_n_per_word_glossary)
     return None
 
 
@@ -177,6 +206,14 @@ def main():
     try:
         logger.info("Starting post-editing pipeline...")
         
+        # Set default num_few_shot based on vectorizer type if not explicitly provided
+        if args.num_few_shot is None:
+            if args.vectorizer == "word_parallel":
+                args.num_few_shot = -1  # Use all word-matched examples
+                logger.info("Using word_parallel mode: automatically setting num_few_shot to -1 (all word-matched examples)")
+            else:
+                args.num_few_shot = 5  # Standard default
+        
         # Print configuration summary
         print("="*50)
         print("POST-EDITING CONFIGURATION")
@@ -185,7 +222,7 @@ def main():
         print(f"Model Name: {args.model_name}")
         print(f"CSV Path: {args.csv_path}")
         print(f"Few-shot Mode: {args.few_shot_mode}")
-        print(f"Few-shot Corpus: {args.few_shot_corpus_path or 'None'}")
+        print(f"Few-shot Corpus: {args.few_shot_corpus_path if args.few_shot_corpus_path else 'None'}")
         print(f"Glossary Path: {args.glossary_path or 'None'}")
         print(f"Glossary Mode: {args.glossary_mode}")
         print(f"Source Language: {args.src_lang_name} ({args.src})")
@@ -196,10 +233,13 @@ def main():
         print(f"Few-shot Examples: {args.num_few_shot}")
         print(f"Max Glossary Entries: {args.max_glossary_entries or 'All available'}")
         print(f"Batch Size: {args.batch_size or 'Auto'}")
+        print(f"Delay Between Batches: {args.delay_between_batches}s")
         print(f"Output Directory: {args.output_dir}")
         print(f"Debug Mode: {args.debug}")
         print(f"Sequential Mode: {getattr(args, 'sequential', False)}")
+        print(f"Translation Mode: {'Direct Translation' if getattr(args, 'translation_mode', False) else 'Post-Editing'}")
         print(f"Prompt-Only Mode: {getattr(args, 'prompt_only', False)}")
+        print(f"Disable Metrics: {getattr(args, 'disable_metrics', False)}")
         print("="*50)
         
         # Basic validation
@@ -222,6 +262,10 @@ def main():
         if args.few_shot_mode == "both" and (not args.few_shot_corpus_path or not args.glossary_path):
             raise ValueError("Both --few_shot_corpus_path and --glossary_path are required when --few_shot_mode is 'both'")
         
+        # "none" mode requires no additional resources (LLM-only translation)
+        if args.few_shot_mode == "none":
+            print("Running in LLM-only mode (no few-shot examples or glossary)")
+        
         # Load data
         data_handler = DataHandler()
         rows = data_handler.load_from_csv(
@@ -236,13 +280,13 @@ def main():
         
         # Create model
         logger.info(f"Initializing {args.model_type} model...")
-        llm = create_model(args.model_type, args.model_name)
+        llm = create_model(args.model_type, args.model_name, args.batch_size, args.delay_between_batches)
         
         # Create few-shot selector
-        few_shot_selector = create_few_shot_selector(args.vectorizer, args.few_shot_corpus_path, args.few_shot_mode)
+        few_shot_selector = create_few_shot_selector(args.vectorizer, args.few_shot_corpus_path, args.few_shot_mode, args.top_n_per_word)
         
         # Create glossary selector
-        glossary_selector = create_glossary_selector(args.glossary_path, args.few_shot_mode, args.glossary_mode)
+        glossary_selector = create_glossary_selector(args.glossary_path, args.few_shot_mode, args.glossary_mode, getattr(args, 'top_n_per_word_glossary', 3))
         
         # Create token counter (only for vLLM models, API models don't need local tokenization)
         token_counter = TokenCounter.create_tokenizer(
@@ -250,7 +294,8 @@ def main():
         )
         
         # Create processing engine
-        processor = ProcessingEngine(llm, few_shot_selector, glossary_selector, token_counter)
+        disable_metrics = getattr(args, 'disable_metrics', False)
+        processor = ProcessingEngine(llm, few_shot_selector, glossary_selector, token_counter, disable_metrics, args.output_dir)
         
         # Ensure output directory exists
         os.makedirs(args.output_dir, exist_ok=True)
@@ -283,7 +328,8 @@ def main():
             num_workers=args.num_workers,
             debug=args.debug,
             prompt_only=getattr(args, 'prompt_only', False),
-            sequential=sequential_mode
+            sequential=sequential_mode,
+            translation_mode=getattr(args, 'translation_mode', False)
         )
         
         logger.info("Post-editing pipeline completed successfully!")

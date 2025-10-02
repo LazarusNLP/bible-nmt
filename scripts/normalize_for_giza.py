@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+2#!/usr/bin/env python3
 """
 Enhanced text normalization specifically for GIZA++ word alignment.
 
@@ -11,12 +11,30 @@ import re
 import os
 from pathlib import Path
 
+# Try to import NLTK tokenizer
+try:
+    from nltk.tokenize import word_tokenize
+    import nltk
+    NLTK_AVAILABLE = True
+    # Try to download punkt if not available
+    try:
+        nltk.data.find('tokenizers/punkt')
+    except LookupError:
+        print("Downloading NLTK punkt tokenizer...")
+        nltk.download('punkt', quiet=True)
+except ImportError:
+    NLTK_AVAILABLE = False
+    print("Warning: NLTK not available, using simple tokenization")
+
 
 def normalize_for_giza(
     text, remove_all_punct=True, normalize_numbers=True, min_length=3
 ):
     """
     Normalize text specifically for GIZA++ word alignment.
+
+    Performs aggressive normalization including proper word tokenization using NLTK
+    when available, falling back to simple tokenization otherwise.
 
     Args:
         text (str): Input text to normalize
@@ -25,7 +43,7 @@ def normalize_for_giza(
         min_length (int): Minimum number of tokens to keep sentence
 
     Returns:
-        str: Normalized text, or None if sentence is too short
+        str: Normalized and tokenized text, or None if sentence is too short
     """
     # Convert to lowercase for better alignment
     text = text.lower()
@@ -75,8 +93,23 @@ def normalize_for_giza(
     text = re.sub(r"\s+", " ", text)
     text = text.strip()
 
-    # Filter out very short sentences
-    tokens = text.split()
+    # Tokenize using NLTK if available, otherwise simple split
+    if NLTK_AVAILABLE:
+        try:
+            tokens = word_tokenize(text)
+            # Filter out empty tokens and rejoin
+            tokens = [token for token in tokens if token.strip()]
+            text = " ".join(tokens)
+        except Exception as e:
+            print(f"Warning: NLTK tokenization failed ({e}), using simple tokenization")
+            tokens = text.split()
+    else:
+        # Fallback to simple tokenization
+        tokens = text.split()
+
+    # Filter out very short sentences based on token count
+    if len(tokens) < min_length:
+        return None
 
     return text
 

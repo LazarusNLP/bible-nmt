@@ -48,10 +48,30 @@ python run_post_editing.py --model_type vllm --model_name microsoft/DialoGPT-med
   --src en --tgt id --src_lang_name English --tgt_lang_name Indonesian \
   --output_dir ./results
 
+# Using word-fuzzy glossary mode for per-word fuzzy matching
+python run_post_editing.py --model_type vllm --model_name microsoft/DialoGPT-medium \
+  --csv_path data.csv --glossary_path glossary.csv \
+  --few_shot_mode glossary --glossary_mode word_fuzzy --top_n_per_word_glossary 5 \
+  --src en --tgt id --src_lang_name English --tgt_lang_name Indonesian \
+  --output_dir ./results
+
 # Using combined parallel examples + glossary
 python run_post_editing.py --model_type vllm --model_name microsoft/DialoGPT-medium \
   --csv_path data.csv --few_shot_corpus_path corpus.csv --glossary_path glossary.csv \
   --few_shot_mode both --num_few_shot 3 --max_glossary_entries 5 \
+  --src en --tgt id --src_lang_name English --tgt_lang_name Indonesian \
+  --output_dir ./results
+
+# Using LLM-only mode (no few-shot examples or glossary)
+python run_post_editing.py --model_type gemini --model_name gemini-2.5-flash \
+  --csv_path data.csv --few_shot_mode none \
+  --src en --tgt id --src_lang_name English --tgt_lang_name Indonesian \
+  --output_dir ./results
+
+# Using translation mode with few-shot examples
+python run_post_editing.py --model_type gemini --model_name gemini-2.5-flash \
+  --csv_path data.csv --few_shot_corpus_path corpus.csv --glossary_path glossary.csv \
+  --few_shot_mode both --translation-mode \
   --src en --tgt id --src_lang_name English --tgt_lang_name Indonesian \
   --output_dir ./results
 
@@ -126,12 +146,14 @@ post-editing/
 
 - `--few_shot_corpus_path`: Path to few-shot corpus
 - `--glossary_path`: Path to glossary file (CSV with source_word, target_word, pos columns)
-- `--few_shot_mode`: Few-shot mode (`parallel`, `glossary`, `both`) (default: `parallel`)
+- `--few_shot_mode`: Few-shot mode (`parallel`, `glossary`, `both`, `none`) (default: `parallel`)
 - `--max_samples`: Maximum number of samples to process
 - `--prompt`: Prompt template key (default: `default`)
 - `--num_few_shot`: Number of few-shot examples (default: 5)
 - `--max_glossary_entries`: Maximum glossary entries per input (default: all available)
-- `--vectorizer`: Similarity method (`bm25`, `tfidf`, `sbert`, `chrf_rag`, `word_lcs`)
+- `--vectorizer`: Similarity method for parallel mode. Options: `bm25`, `tfidf`, `sbert`, `all_mpnet`, `chrf_rag`, `word_parallel`, `full`
+- `--glossary_mode`: Glossary selection mode. Options: `smart` (default), `full`, `word_fuzzy`
+- `--top_n_per_word_glossary`: For word_fuzzy glossary mode, number of top glossary matches per word (default: 3)
 - `--batch_size`: Batch size for processing
 - `--num_workers`: Number of worker threads (default: 8)
 - `--batch_timeout`: Timeout for batch jobs in seconds
@@ -145,7 +167,7 @@ post-editing/
 The input CSV must contain these columns:
 - `source_text`: Source language text
 - `target_text`: Ground truth target language text
-- `pred_target_text`: Machine translation prediction
+- `pred_text`: Machine translation prediction
 
 ### Few-shot Corpus
 Can be either:
@@ -185,17 +207,47 @@ cabut (rambut),hau,VERB
 - **Unified Interface**: Same API across all model types
 - **Async Processing**: Gemini models support native async batch processing for maximum throughput
 
-### 2. Smart Retrieval
-- **BM25**: Fast keyword-based similarity
-- **TF-IDF**: Term frequency-based similarity
-- **SBERT**: Semantic similarity with embedding caching
-- **CHRF-RAG**: Character n-gram similarity with diversity-aware selection
-- **Word-based LCS**: Longest-common substring matching for word-level similarity
+### 2. Few-shot Modes
 
-### 3. Few-shot Modes
-- **Parallel Mode**: Uses similar translation examples from parallel corpus
-- **Glossary Mode**: Uses relevant terminology from glossary/lexicon with smart matching
-- **Both Mode**: Combines parallel examples with glossary entries for comprehensive assistance
+The system supports three few-shot approaches:
+
+#### **Parallel Mode** (`--few_shot_mode parallel`)
+Uses similar translation examples from parallel corpus. **Requires**: `--few_shot_corpus_path`
+
+**Available vectorizers** (`--vectorizer`):
+- **`bm25`**: Fast keyword-based similarity using Okapi BM25 algorithm
+- **`tfidf`**: Term frequency-inverse document frequency vectorization with cosine similarity  
+- **`sbert`**: Semantic similarity with embedding caching (uses Indonesian-optimized `LazarusNLP/all-indo-e5-small-v4`)
+- **`all_mpnet`**: High-quality multilingual embeddings (uses `sentence-transformers/all-mpnet-base-v2`)
+- **`chrf_rag`**: Character n-gram similarity with diversity-aware selection to avoid redundancy
+- **`word_parallel`**: Retrieves top-n matches per word in the query with configurable hyperparameters
+- **`full`**: Returns the entire corpus as few-shot examples (useful for small corpora)
+
+**Vectorizer Selection Guide:**
+- **Indonesian tasks**: `sbert` (Indonesian-optimized, faster)
+- **Multilingual/high-quality**: `all_mpnet` (state-of-the-art multilingual)
+- **Large corpora**: `bm25` or `tfidf` (keyword-based, very fast)
+- **Character-level**: `chrf_rag` (good for morphologically rich languages)
+- **Fuzzy matching**: `word_parallel` (handles typos and variations)
+
+#### **Glossary Mode** (`--few_shot_mode glossary`)
+Uses relevant terminology from glossary/lexicon. **Requires**: `--glossary_path`
+
+**Available matching modes** (`--glossary_mode`):
+- **`smart`** (default): Intelligently selects most relevant glossary entries based on input text matching
+- **`full`**: Returns all available glossary entries (up to `--max_glossary_entries` limit)
+- **`word_fuzzy`**: Fuzzy matching per word - finds top-N glossary entries for each word in the input text using similarity matching
+
+#### **Both Mode** (`--few_shot_mode both`)  
+Combines parallel examples with glossary entries for comprehensive assistance. **Requires**: Both `--few_shot_corpus_path` and `--glossary_path`
+- Uses the specified `--vectorizer` for parallel examples
+- Uses the specified `--glossary_mode` for terminology
+
+#### **None Mode** (`--few_shot_mode none`)  
+Uses LLM capabilities only without any few-shot examples or glossary. **Requires**: No additional resources
+- Pure LLM-based translation or post-editing
+- Fastest processing (no retrieval overhead)
+- Useful for baseline comparisons
 
 #### Glossary Matching Features:
 - **Optimized Lookup**: Fast dictionary-based matching (O(n) vs O(n×m))
@@ -206,7 +258,7 @@ cabut (rambut),hau,VERB
 - **No Duplicate Removal**: Returns all matching entries (preserves multiple senses)
 - **Debug Mode**: Detailed matching statistics with `--debug` flag
 
-### 4. Efficient Processing
+### 3. Efficient Processing
 - **Async Batch Processing**: Native async support for Gemini API with up to 50 concurrent requests
 - **Smart Batch Sizing**: Automatic optimization for different model types (e.g., 200 requests for Gemini)
 - **Rate Limiting**: Built-in rate limiting to respect API limits (500 RPM for Gemini)
@@ -215,7 +267,7 @@ cabut (rambut),hau,VERB
 - **Caching**: SBERT embeddings cached for reuse across runs
 - **Multi-threaded Fallback**: Thread-based parallel processing for non-async models
 
-### 5. Comprehensive Evaluation
+### 4. Comprehensive Evaluation
 - **Multiple Metrics**: BLEU, SacreBLEU, SPBLEU, chrF, chrF3, chrF++
 - **Improvement Tracking**: Shows gains from post-editing
 - **Statistical Analysis**: Token counts and processing statistics

@@ -20,6 +20,11 @@ import os
 import csv
 from typing import List, Tuple, Dict, Set
 from pathlib import Path
+import sys
+
+# Add the current directory to Python path to import normalize_text
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from normalize_text import normalize_text
 
 
 # New Testament 3-letter book codes (copied from src/run_translation_v3.py)
@@ -173,7 +178,10 @@ def merge_range_maps(source_ranges: List[Tuple[int, int]],
 def build_aligned_data_improved(
     source_text_lines: List[str], 
     target_text_lines: List[str], 
-    vref_lines: List[str]
+    vref_lines: List[str],
+    preserve_case: bool = False,
+    normalize_punctuation: bool = True,
+    normalize_quotes: bool = True
 ) -> Tuple[List[Dict[str, str]], List[Dict]]:
     """
     Build aligned data with improved range handling.
@@ -232,10 +240,14 @@ def build_aligned_data_improved(
             combined_target = " ".join(target_texts)
             
             if combined_source and combined_target:
+                # Apply text normalization
+                normalized_source = normalize_text(combined_source, preserve_case, normalize_punctuation, normalize_quotes)
+                normalized_target = normalize_text(combined_target, preserve_case, normalize_punctuation, normalize_quotes)
+                
                 rows.append({
                     "verse": verse_ref, 
-                    "source_text": combined_source,
-                    "target_text": combined_target
+                    "source_text": normalized_source,
+                    "target_text": normalized_target
                 })
             
             # Mark all indices in this range as processed
@@ -248,10 +260,14 @@ def build_aligned_data_improved(
         source_text = source_line.strip()
         target_text = target_line.strip()
         if source_text and target_text:
+            # Apply text normalization
+            normalized_source = normalize_text(source_text, preserve_case, normalize_punctuation, normalize_quotes)
+            normalized_target = normalize_text(target_text, preserve_case, normalize_punctuation, normalize_quotes)
+            
             rows.append({
                 "verse": verse_ref, 
-                "source_text": source_text,
-                "target_text": target_text
+                "source_text": normalized_source,
+                "target_text": normalized_target
             })
         processed.add(idx)
 
@@ -328,6 +344,21 @@ def main():
         default="aligned",
         help="Prefix for output filenames (default: aligned)",
     )
+    parser.add_argument(
+        "--preserve-case",
+        action="store_true",
+        help="Preserve original capitalization in normalized text (default: convert to lowercase)"
+    )
+    parser.add_argument(
+        "--no-punctuation",
+        action="store_true",
+        help="Skip punctuation normalization"
+    )
+    parser.add_argument(
+        "--no-quotes",
+        action="store_true",
+        help="Skip quote removal"
+    )
 
     args = parser.parse_args()
 
@@ -348,7 +379,14 @@ def main():
     vref_lines = load_lines(args.vref_path)
 
     print("Building aligned data with improved range handling...")
-    data, conflicts = build_aligned_data_improved(source_lines, target_lines, vref_lines)
+    data, conflicts = build_aligned_data_improved(
+        source_lines, 
+        target_lines, 
+        vref_lines,
+        preserve_case=args.preserve_case,
+        normalize_punctuation=not args.no_punctuation,
+        normalize_quotes=not args.no_quotes
+    )
     
     # Report any conflicts found
     if conflicts:

@@ -15,6 +15,19 @@ POST_EDIT_JSON_SCHEMA = {
     "additionalProperties": False
 }
 
+# JSON schema for translation output
+TRANSLATION_JSON_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "translated_text": {
+            "type": "string",
+            "description": "The translation in the target language"
+        }
+    },
+    "required": ["translated_text"],
+    "additionalProperties": False
+}
+
 # Default model configurations
 DEFAULT_MODEL_CONFIGS = {
     "gpt": {
@@ -28,21 +41,21 @@ DEFAULT_MODEL_CONFIGS = {
         "temperature": 0.0
     },
     "vllm": {
-        "max_model_len": 6000,  # Increased context window for large prompts
+        "max_model_len": 20000,  # Increased context window for large prompts
         "gpu_memory_utilization": 0.95,
         "temperature": 0.0,
-        "max_tokens": 512
+        "max_tokens": 2048
     }
 }
 
 # Supported vectorizer types
-SUPPORTED_VECTORIZERS = ["bm25", "tfidf", "sbert", "chrf_rag", "word_lcs", "full"]
+SUPPORTED_VECTORIZERS = ["bm25", "tfidf", "sbert", "chrf_rag", "word_parallel", "all_mpnet", "bge", "full"]
 
 # Supported model types  
 SUPPORTED_MODEL_TYPES = ["gpt", "gemini", "vllm"]
 
 # Supported few-shot modes
-SUPPORTED_FEW_SHOT_MODES = ["parallel", "glossary", "both"]
+SUPPORTED_FEW_SHOT_MODES = ["parallel", "glossary", "both", "none"]
 
 # Supported glossary modes
-SUPPORTED_GLOSSARY_MODES = ["smart", "full"]
+SUPPORTED_GLOSSARY_MODES = ["smart", "full", "word_fuzzy"]

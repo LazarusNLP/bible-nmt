@@ -6,10 +6,11 @@ import json
 import os
 from typing import List
 from .base import BaseLLM
+from core.constants import DEFAULT_MODEL_CONFIGS, POST_EDIT_JSON_SCHEMA, TRANSLATION_JSON_SCHEMA
 
 
-def parse_json_response(response_text: str) -> str:
-    """Safely parse JSON response from vLLM and extract post_edited_text."""
+def parse_json_response(response_text: str, translation_mode: bool = False) -> str:
+    """Safely parse JSON response from vLLM and extract the appropriate text field."""
     try:
         # Clean the response text first
         cleaned_text = response_text.strip()
@@ -17,17 +18,20 @@ def parse_json_response(response_text: str) -> str:
         # With guided JSON generation, response should be pure JSON
         response_json = json.loads(cleaned_text)
         
-        if isinstance(response_json, dict) and 'post_edited_text' in response_json:
-            extracted_text = response_json['post_edited_text'].strip()
+        # Choose the appropriate field based on mode
+        field_name = 'translated_text' if translation_mode else 'post_edited_text'
+        
+        if isinstance(response_json, dict) and field_name in response_json:
+            extracted_text = response_json[field_name].strip()
             
             # Additional validation: ensure it's not just echoing the source
             if extracted_text and len(extracted_text) > 0:
                 return extracted_text
             else:
-                print(f"Warning: Empty post_edited_text in JSON response")
+                print(f"Warning: Empty {field_name} in JSON response")
                 return "[EXTRACTION_FAILED]"
         else:
-            print(f"Warning: JSON response missing 'post_edited_text' field: {response_json}")
+            print(f"Warning: JSON response missing '{field_name}' field: {response_json}")
             return "[INVALID_JSON_STRUCTURE]"
                 
     except json.JSONDecodeError as e:
@@ -43,8 +47,9 @@ def parse_json_response(response_text: str) -> str:
             try:
                 json_part = cleaned_text[start_idx:end_idx]
                 response_json = json.loads(json_part)
-                if isinstance(response_json, dict) and 'post_edited_text' in response_json:
-                    return response_json['post_edited_text'].strip()
+                field_name = 'translated_text' if translation_mode else 'post_edited_text'
+                if isinstance(response_json, dict) and field_name in response_json:
+                    return response_json[field_name].strip()
             except json.JSONDecodeError:
                 pass
                 
@@ -67,12 +72,14 @@ class VLLMModel(BaseLLM):
         # Import vLLM components
         from vllm import LLM, SamplingParams
         from vllm.sampling_params import GuidedDecodingParams
-        from core.constants import POST_EDIT_JSON_SCHEMA
         
-        # Default vLLM configuration
+        # Get default vLLM configuration from constants
+        vllm_defaults = DEFAULT_MODEL_CONFIGS.get('vllm', {})
+        
+        # Default vLLM configuration with additional vLLM-specific settings
         default_config = {
-            'max_model_len': 6000,
-            'gpu_memory_utilization': 0.95,
+            'max_model_len': vllm_defaults.get('max_model_len', 32000),
+            'gpu_memory_utilization': vllm_defaults.get('gpu_memory_utilization', 0.95),
             'disable_log_stats': True,
             'tensor_parallel_size': 1,
             'enable_chunked_prefill': True,
@@ -85,10 +92,19 @@ class VLLMModel(BaseLLM):
         print(f"Initializing vLLM model: {model_path}")
         try:
             self.model = LLM(model_path, **config)
-            self.sampling_params = SamplingParams(
-                max_tokens=512,
-                temperature=0.0,
+            # Create sampling params for post-editing (default)
+            self.post_edit_sampling_params = SamplingParams(
+                max_tokens=vllm_defaults.get('max_tokens', 1024),
+                temperature=vllm_defaults.get('temperature', 0.0),
+                seed=42,  # Fixed seed for reproducibility
                 guided_decoding=GuidedDecodingParams(json=POST_EDIT_JSON_SCHEMA),
+            )
+            # Create sampling params for translation
+            self.translation_sampling_params = SamplingParams(
+                max_tokens=vllm_defaults.get('max_tokens', 1024),
+                temperature=vllm_defaults.get('temperature', 0.0),
+                seed=42,  # Fixed seed for reproducibility
+                guided_decoding=GuidedDecodingParams(json=TRANSLATION_JSON_SCHEMA),
             )
             print("✅ vLLM model initialized successfully!")
         except Exception as e:
@@ -113,13 +129,14 @@ class VLLMModel(BaseLLM):
             print("   - Or run: CUDA_VISIBLE_DEVICES=0 python your_script.py")
             print("   - Check if CUDA is properly installed and accessible")
 
-    def generate(self, messages: List[dict]) -> str:
+    def generate(self, messages: List[dict], translation_mode: bool = False) -> str:
         """Generate single response using vLLM."""
-        outputs = self.model.chat([messages], sampling_params=self.sampling_params)
+        sampling_params = self.translation_sampling_params if translation_mode else self.post_edit_sampling_params
+        outputs = self.model.chat([messages], sampling_params=sampling_params)
         raw_response = outputs[0].outputs[0].text
-        return parse_json_response(raw_response)
+        return parse_json_response(raw_response, translation_mode)
     
-    def generate_batch(self, messages_list: List[List[dict]], sequential=False) -> List[str]:
+    def generate_batch(self, messages_list: List[List[dict]], sequential=False, translation_mode: bool = False) -> List[str]:
         """Generate responses for a batch of messages using vLLM's efficient batching."""
         if sequential:
             # Force sequential processing without batching
@@ -127,7 +144,7 @@ class VLLMModel(BaseLLM):
             results = []
             for i, messages in enumerate(messages_list):
                 try:
-                    result = self.generate(messages)
+                    result = self.generate(messages, translation_mode)
                     results.append(result)
                     print(f"  Processed vLLM request {i+1}/{len(messages_list)}")
                 except Exception as e:
@@ -136,13 +153,14 @@ class VLLMModel(BaseLLM):
             return results
         
         print(f"Generating {len(messages_list)} responses using vLLM batch processing...")
-        outputs = self.model.chat(messages_list, sampling_params=self.sampling_params)
+        sampling_params = self.translation_sampling_params if translation_mode else self.post_edit_sampling_params
+        outputs = self.model.chat(messages_list, sampling_params=sampling_params)
         
         # Parse all JSON responses
         results = []
         for output in outputs:
             raw_response = output.outputs[0].text
-            parsed_response = parse_json_response(raw_response)
+            parsed_response = parse_json_response(raw_response, translation_mode)
             results.append(parsed_response)
         
         return results

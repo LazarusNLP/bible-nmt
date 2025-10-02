@@ -5,6 +5,9 @@ import pandas as pd
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 import torch
 
+# Import text normalization
+from text_normalization import normalize_text
+
 
 def parse_args():
     parser = ArgumentParser(description="Run inference on text file or CSV file using a trained model")
@@ -67,8 +70,8 @@ def read_input_file(input_path):
         raise FileNotFoundError(f"Input file not found: {input_path}")
     
     with open(input_path, 'r', encoding='utf-8') as f:
-        lines = [line.strip() for line in f.readlines() if line.strip()]
-    print(f"Loaded {len(lines)} lines from input file")
+        lines = [normalize_text(line.strip()) for line in f.readlines() if line.strip()]
+    print(f"Loaded {len(lines)} lines from input file (with text normalization)")
     return lines
 
 
@@ -204,7 +207,8 @@ def main():
     if mode == "csv":
         # Handle CSV input
         df = read_csv_file(args.input_path)
-        input_lines = df['source_text'].tolist()
+        # Apply text normalization to source text from CSV
+        input_lines = [normalize_text(text) for text in df['source_text'].tolist()]
         
         # Run inference
         predictions = run_inference(

@@ -31,30 +31,51 @@ class GlossarySelector:
     """
     Selects relevant glossary entries for given text.
     
-    Supports two modes:
+    Supports three modes:
     - smart: Intelligent matching based on input text (optimized lookups)
     - full: Returns entire glossary for every request
+    - word_fuzzy: Fuzzy matching per word, similar to word_parallel mode for few-shot examples
     """
     
-    def __init__(self, glossary: List[GlossaryEntry], mode: str = "smart"):
+    def __init__(self, glossary: List[GlossaryEntry], mode: str = "smart", top_n_per_word_glossary: int = 3):
         """
         Initialize glossary selector and build lookup dictionaries for fast matching.
         
         Args:
             glossary: List of glossary entries
-            mode: Either "smart" (intelligent matching) or "full" (return all entries)
+            mode: Either "smart" (intelligent matching), "full" (return all entries), or "word_fuzzy" (fuzzy matching per word)
+            top_n_per_word_glossary: For word_fuzzy mode, number of top matches to retrieve per word
         """
         self.glossary = glossary
         self.mode = mode
+        self.top_n_per_word_glossary = top_n_per_word_glossary
+        
+        # Initialize max_ngram_length for all modes (needed for debugging output)
+        self.max_ngram_length = 1
+        
+        # Import fuzzy matching functions from vectorizers
+        from .vectorizers import _extract_words, _efficient_string_similarity
+        self._extract_words = _extract_words
+        self._efficient_string_similarity = _efficient_string_similarity
         
         if mode == "smart":
             # Build lookup dictionaries for efficient matching
             self._build_lookup_dictionaries()
             print(f"✅ Glossary selector initialized in smart mode with {len(glossary)} entries")
         elif mode == "full":
+            # Calculate max_ngram_length for full mode too
+            for entry in glossary:
+                word_count = len(entry.source_word.lower().strip().split())
+                self.max_ngram_length = max(self.max_ngram_length, word_count)
             print(f"✅ Glossary selector initialized in full mode with {len(glossary)} entries")
+        elif mode == "word_fuzzy":
+            # Calculate max_ngram_length for word_fuzzy mode too
+            for entry in glossary:
+                word_count = len(entry.source_word.lower().strip().split())
+                self.max_ngram_length = max(self.max_ngram_length, word_count)
+            print(f"✅ Glossary selector initialized in word_fuzzy mode with {len(glossary)} entries (top-{top_n_per_word_glossary} per word)")
         else:
-            raise ValueError(f"Unsupported glossary mode: {mode}. Use 'smart' or 'full'.")
+            raise ValueError(f"Unsupported glossary mode: {mode}. Use 'smart', 'full', or 'word_fuzzy'.")
     
     def _build_lookup_dictionaries(self):
         """Build fast lookup dictionaries for different matching strategies including n-grams."""
@@ -185,9 +206,122 @@ class GlossarySelector:
             # Use intelligent matching with optimized lookups
             return self._get_relevant_entries_smart(text, max_entries)
         
+        elif self.mode == "word_fuzzy":
+            # Use word-based fuzzy matching similar to word_parallel mode
+            return self._get_relevant_entries_word_fuzzy(text, max_entries)
+        
         else:
             raise ValueError(f"Unknown glossary mode: {self.mode}")
     
+    def _get_relevant_entries_word_fuzzy(self, text: str, max_entries: int = None, similarity_threshold: float = 0.5, min_word_length: int = 2) -> List[GlossaryEntry]:
+        """
+        Get relevant glossary entries using word-based fuzzy matching.
+        
+        For each word in the input text, finds the top n glossary entries that best match
+        that word using fuzzy string similarity, then aggregates scores and returns top entries.
+        Similar to WordBasedParallelRetriever but for glossary entries.
+        
+        Args:
+            text: Input text to find relevant glossary entries for
+            max_entries: Maximum number of entries to return (None = all matched entries)
+            similarity_threshold: Minimum similarity score to consider a match (0.0-1.0)
+            min_word_length: Minimum word length to consider for matching
+            
+        Returns:
+            List of relevant glossary entries
+        """
+        if not self.glossary:
+            return []
+        
+        # Extract words from the input text
+        query_words = self._extract_words(text, min_word_length)
+        
+        if not query_words:
+            print("Warning: No valid words found in input text after filtering")
+            # Fallback to first max_entries if no words found
+            return self.glossary[:max_entries] if max_entries else self.glossary[:10]
+        
+        print(f"Word-fuzzy glossary matching with {len(query_words)} words: {query_words}")
+        
+        # For each word, find top n matching glossary entries
+        word_entry_matches = {}  # word -> [(entry_idx, score), ...]
+        entry_aggregate_scores = {}  # entry_idx -> aggregate_score
+        
+        for word in query_words:
+            word_matches = []
+            
+            # Score all glossary entries for this word
+            for entry_idx, entry in enumerate(self.glossary):
+                # Score against the source word in the glossary entry
+                word_score = self._score_entry_for_word(word, entry.source_word, similarity_threshold)
+                if word_score > 0:
+                    word_matches.append((entry_idx, word_score))
+            
+            # Sort by score and take top n for this word
+            word_matches.sort(key=lambda x: x[1], reverse=True)
+            top_matches_for_word = word_matches[:self.top_n_per_word_glossary]
+            word_entry_matches[word] = top_matches_for_word
+            
+            # Aggregate scores for final ranking
+            for entry_idx, score in top_matches_for_word:
+                if entry_idx not in entry_aggregate_scores:
+                    entry_aggregate_scores[entry_idx] = 0.0
+                entry_aggregate_scores[entry_idx] += score
+        
+        # Debug information
+        total_word_matches = sum(len(matches) for matches in word_entry_matches.values())
+        unique_entries = len(entry_aggregate_scores)
+        print(f"Found {total_word_matches} total word-entry matches across {unique_entries} unique entries")
+        
+        # Sort entries by aggregate score and return top entries
+        sorted_entries = sorted(
+            entry_aggregate_scores.items(), 
+            key=lambda x: x[1], 
+            reverse=True
+        )
+        
+        # Get indices - either top-max_entries or all available
+        if max_entries is not None:
+            top_indices = [idx for idx, score in sorted_entries[:max_entries]]
+        else:
+            top_indices = [idx for idx, score in sorted_entries]
+        
+        # Print some debugging info
+        if sorted_entries:
+            show_count = min(5, len(sorted_entries))
+            print(f"Top entry aggregate scores: {[(idx, f'{score:.3f}') for idx, score in sorted_entries[:show_count]]}")
+        
+        # Show word-level breakdown for debugging
+        if len(query_words) <= 10:  # Only show details for reasonable number of words
+            print("Word-level matches breakdown:")
+            for word, matches in word_entry_matches.items():
+                if matches:
+                    match_info = []
+                    display_count = min(self.top_n_per_word_glossary, len(matches))
+                    for entry_idx, score in matches[:display_count]:
+                        entry = self.glossary[entry_idx]
+                        match_info.append(f"{entry.source_word} ({score:.3f})")
+                    print(f"  '{word}': {len(matches)} matches, top {display_count}: {match_info}")
+        
+        return [self.glossary[i] for i in top_indices]
+    
+    def _score_entry_for_word(self, word: str, entry_source_word: str, similarity_threshold: float = 0.5) -> float:
+        """Score a glossary entry based on how well it matches a given word using efficient string similarity."""
+        # Extract base word from entry (remove parentheses if present)
+        base_entry_word = self._extract_base_word(entry_source_word)
+        
+        # Find the best match among the words in the base entry (in case it's a phrase)
+        entry_words = self._extract_words(base_entry_word)
+        
+        best_similarity = 0.0
+        for entry_word in entry_words:
+            similarity = self._efficient_string_similarity(word, entry_word)
+            if similarity > best_similarity:
+                best_similarity = similarity
+        
+        # Only return score if it meets the threshold
+        return best_similarity if best_similarity >= similarity_threshold else 0.0
+
     def _get_relevant_entries_smart(self, text: str, max_entries: int = None) -> List[GlossaryEntry]:
         """
         Get relevant glossary entries for given text using optimized n-gram dictionary lookups.
@@ -328,9 +462,42 @@ class GlossarySelector:
             # Use the detailed smart matching debug
             return self._get_relevant_entries_debug_smart(text, max_entries)
         
+        elif self.mode == "word_fuzzy":
+            # Use word-fuzzy matching with debug info
+            return self._get_relevant_entries_debug_word_fuzzy(text, max_entries)
+        
         else:
             raise ValueError(f"Unknown glossary mode: {self.mode}")
     
+    def _get_relevant_entries_debug_word_fuzzy(self, text: str, max_entries: int = None) -> tuple:
+        """
+        Get relevant glossary entries with debug information using word-fuzzy matching.
+        
+        Returns:
+            Tuple of (entries, debug_info)
+        """
+        # Get the entries using the regular method
+        entries = self._get_relevant_entries_word_fuzzy(text, max_entries)
+        
+        # Extract words from text for debug output
+        words = self._extract_words(text.lower())
+        
+        debug_info = {
+            "mode": "word_fuzzy",
+            "total_words": len(words),
+            "words": words,
+            "top_n_per_word": self.top_n_per_word_glossary,
+            "exact_matches": 0,  # Not applicable for word_fuzzy mode
+            "normalized_matches": 0,  # Not applicable for word_fuzzy mode
+            "lemma_matches": 0,  # Not applicable for word_fuzzy mode
+            "lemma_details": [],
+            "match_details": [f"Word-fuzzy mode: returning {len(entries)} entries based on fuzzy word matching (top-{self.top_n_per_word_glossary} per word)"],
+            "total_entries": len(entries),
+            "sample_entries": [(e.source_word, e.target_word, e.pos_tag) for e in entries[:5]]
+        }
+        
+        return entries, debug_info
+
     def _get_relevant_entries_debug_smart(self, text: str, max_entries: int = None) -> tuple:
         """
         Get relevant glossary entries with debug information using optimized n-gram lookups.

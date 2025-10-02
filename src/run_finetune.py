@@ -29,6 +29,9 @@ import wandb
 from sklearn.model_selection import train_test_split
 import random
 
+# Import text normalization
+from text_normalization import normalize_text
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -120,14 +123,14 @@ def load_csv_dataset(train_csv_path, test_csv_path, validation_split=0.1, seed=1
     
     logger.info(f"After cleaning - Training: {len(train_df)} pairs, Testing: {len(test_df)} pairs")
     
-    # Convert to the format expected by the training script
+    # Convert to the format expected by the training script with text normalization
     train_data = [
-        {"source": row['source_text'], "target": row['target_text']}
+        {"source": normalize_text(row['source_text']), "target": normalize_text(row['target_text'])}
         for _, row in train_df.iterrows()
     ]
     
     test_data = [
-        {"source": row['source_text'], "target": row['target_text']}
+        {"source": normalize_text(row['source_text']), "target": normalize_text(row['target_text'])}
         for _, row in test_df.iterrows()
     ]
     

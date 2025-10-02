@@ -10,12 +10,13 @@ class BaseLLM(ABC):
     """Abstract base class for LLM interfaces."""
     
     @abstractmethod
-    def generate(self, messages: List[dict]) -> str:
+    def generate(self, messages: List[dict], translation_mode: bool = False) -> str:
         """
         Generate a single response from messages.
         
         Args:
             messages: List of chat messages with 'role' and 'content' keys
+            translation_mode: If True, use translation mode instead of post-editing
             
         Returns:
             Generated text response
@@ -35,7 +36,7 @@ class BaseLLM(ABC):
         Returns:
             List of generated responses
         """
-        return [self.generate(messages) for messages in messages_list]
+        return [self.generate(messages, False) for messages in messages_list]
     
     @property
     def supports_batch(self) -> bool:

@@ -10,6 +10,9 @@ from nltk.translate.bleu_score import corpus_bleu
 from nltk.tokenize import word_tokenize
 import random
 
+# Import text normalization
+from text_normalization import normalize_text
+
 NT_BOOKS = [
     "MAT",
     "MRK",
@@ -78,6 +81,10 @@ def process_translations(x, src_lang: str, tgt_lang: str):
 
     source_text = texts[selected_source_idx] if selected_source_idx is not None and selected_source_idx < len(texts) else ""
     target_text = texts[selected_target_idx] if selected_target_idx is not None and selected_target_idx < len(texts) else ""
+
+    # Apply text normalization
+    source_text = normalize_text(source_text) if source_text else ""
+    target_text = normalize_text(target_text) if target_text else ""
 
     source_file = ""
     target_file = ""
@@ -216,9 +223,14 @@ def load_scripture_files_pre_split_from_model_dir(model_name_path: str) -> Datas
             raise ValueError(
                 f"Line count mismatch for split '{split}': {len(src_lines)} src vs {len(trg_lines)} trg"
             )
-        return Dataset.from_list([
-            {"source_text": s, "target_text": t} for s, t in zip(src_lines, trg_lines)
-        ])
+        # Apply text normalization to loaded data
+        normalized_data = []
+        for s, t in zip(src_lines, trg_lines):
+            normalized_data.append({
+                "source_text": normalize_text(s) if s else "",
+                "target_text": normalize_text(t) if t else ""
+            })
+        return Dataset.from_list(normalized_data)
 
     # Required splits: validation and test
     validation_ds = read_parallel("validation")
@@ -269,7 +281,8 @@ def main(args):
     src_lang, tgt_lang = args.src_lang, args.tgt_lang
     src_lang_nllb, tgt_lang_nllb = args.src_lang_nllb, args.tgt_lang_nllb
     dataset_name = args.dataset_name.split("/")[-1]
-    output_dir = "baseline" if args.baseline else args.model_name.split("/")[0]
+    output_dir = "baseline" if args.baseline else args.model_name
+    print(f"Output directory: {output_dir}")
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     if dataset_name == "biblenlp-corpus":
@@ -303,12 +316,11 @@ def main(args):
             print(f"Error in tokenizer: {e}")
             
             model_dir = args.model_name
-            # Go 2 parent directories up
             model_dir = os.path.abspath(os.path.join(model_dir, "..", ".."))
             tokenizer = AutoTokenizer.from_pretrained(model_dir)
         tokenizer.src_lang = src_lang_nllb
         tokenizer.tgt_lang = tgt_lang_nllb
-
+        print(f"Initializing pipeline")
         translator = pipeline(
             "translation",
             model=model,
@@ -423,7 +435,9 @@ def main(args):
             continue
         if args.book_name:
             split_ds = split_ds.filter(lambda x: x["book"] == args.book_name)
+        print(f"Inferring {split_ds}")
         results = split_ds.map(infer, batched=True, batch_size=args.per_device_eval_batch_size)
+        print(f"Computing metrics...")
         output = compute_metrics(results)
 
         with open(f"{output_dir}/{split}-results.json", "w") as f:

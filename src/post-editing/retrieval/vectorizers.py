@@ -1,7 +1,7 @@
 """
 Different vectorizer implementations for similarity-based retrieval.
 
-For optimal performance with WordBasedLCSRetriever, install rapidfuzz:
+For optimal performance with word-based retrievers, install rapidfuzz:
     pip install rapidfuzz
     
 This provides much faster string similarity computations than the fallback difflib.
@@ -70,21 +70,28 @@ class TFIDFRetriever(BaseRetriever):
 class SBERTRetriever(BaseRetriever):
     """SBERT-based retrieval with caching for few-shot examples."""
     
-    def __init__(self, corpus_id: str = None):
-        """Initialize SBERT retriever with optional corpus ID for caching."""
+    def __init__(self, corpus_id: str = None, model_name: str = "LazarusNLP/all-indo-e5-small-v4"):
+        """
+        Initialize SBERT retriever with optional corpus ID for caching.
+        
+        Args:
+            corpus_id: Optional corpus ID for caching embeddings
+            model_name: SentenceTransformer model name to use
+        """
         self.corpus_id = corpus_id
+        self.model_name = model_name
     
     def get_similar_examples(self, query: str, corpus: List[Tuple], k: int) -> List[Tuple]:
         """Get top-k similar examples using cached SBERT embeddings."""
-        print(f"Getting {k} few-shot examples using SBERT vectorizer (with caching)")
+        print(f"Getting {k} few-shot examples using SBERT vectorizer (model: {self.model_name})")
         
         # Get cached corpus embeddings (this will compute and cache if not already cached)
-        corpus_data = get_corpus_embeddings(corpus, self.corpus_id)
+        corpus_data = get_corpus_embeddings(corpus, self.corpus_id, self.model_name)
         embeddings = corpus_data['embeddings']
         cached_corpus = corpus_data['corpus']
         
         # Compute query embedding only
-        sbert_model = get_sbert_model()
+        sbert_model = get_sbert_model(self.model_name)
         query_embedding = sbert_model.encode([query], show_progress_bar=False)  # (1, dim)
         
         # Compute similarities using cached corpus embeddings
@@ -290,19 +297,37 @@ class CHRFRAGRetriever(BaseRetriever):
         return selected_examples
 
 
-class WordBasedLCSRetriever(BaseRetriever):
-    """Word-based retrieval using longest-common substring distance for few-shot examples."""
+class WordBasedParallelRetriever(BaseRetriever):
+    """
+    Word-based parallel sentence retrieval for few-shot examples with optimization.
     
-    def __init__(self, min_word_length: int = 2, similarity_threshold: float = 0.5):
+    For each word in the input source sentence, this retriever finds sentences 
+    in the parallel corpus that contain the word or a close match according to 
+    longest-common substring distance. It takes the top n matches per word 
+    where n is a configurable hyperparameter.
+    
+    OPTIMIZATION: Uses precomputed corpus word index for batch processing efficiency.
+    """
+    
+    def __init__(self, min_word_length: int = 2, similarity_threshold: float = 0.5, 
+                 top_n_per_word: int = 3):
         """
-        Initialize word-based LCS retriever.
+        Initialize word-based parallel retriever.
         
         Args:
             min_word_length: Minimum word length to consider for matching
             similarity_threshold: Minimum LCS similarity score to consider a match (0.0-1.0)
+            top_n_per_word: Number of top matches to retrieve per word (hyperparameter)
         """
         self.min_word_length = min_word_length
         self.similarity_threshold = similarity_threshold
+        self.top_n_per_word = top_n_per_word
+        
+        # Optimization: Cache for corpus preprocessing
+        self._corpus_word_index = None  # word -> [(sent_idx, similarity_score), ...]
+        self._corpus_word_cache = None  # sent_idx -> [word1, word2, word3, ...]
+        self._corpus_texts = None       # sent_idx -> source_text
+        self._indexed_corpus_id = None  # Track which corpus was indexed
         
         # Print information about which similarity library is being used
         if RAPIDFUZZ_AVAILABLE:
@@ -318,11 +343,177 @@ class WordBasedLCSRetriever(BaseRetriever):
         else:
             print("Using difflib (built-in) for string similarity. Install 'rapidfuzz' for better performance.")
     
-    def get_similar_examples(self, query: str, corpus: List[Tuple], k: int) -> List[Tuple]:
-        """Get top-k similar examples using word-based LCS matching."""
-        print(f"Getting {k} few-shot examples using Word-based LCS vectorizer")
+    def _get_corpus_id(self, corpus: List[Tuple]) -> str:
+        """Generate a unique ID for the corpus to track if it's been indexed."""
+        import hashlib
+        # Use first and last few sentences to create a corpus fingerprint
+        sample_texts = []
+        if len(corpus) > 0:
+            sample_texts.append(corpus[0][0])
+        if len(corpus) > 10:
+            sample_texts.append(corpus[len(corpus)//2][0])
+        if len(corpus) > 1:
+            sample_texts.append(corpus[-1][0])
         
-        if k < 1:
+        fingerprint = "|".join(sample_texts) + f"|size:{len(corpus)}"
+        return hashlib.md5(fingerprint.encode()).hexdigest()[:12]
+    
+    def _preprocess_corpus(self, corpus: List[Tuple]) -> None:
+        """
+        Preprocess corpus to build word index for efficient batch processing.
+        
+        This builds:
+        1. Word-to-sentence mapping for fast lookups
+        2. Cached word extractions to avoid recomputing
+        3. Text cache for reference
+        """
+        corpus_id = self._get_corpus_id(corpus)
+        
+        # Skip if already processed
+        if self._indexed_corpus_id == corpus_id:
+            return
+        
+        print(f"🔄 Preprocessing corpus for optimized word_parallel retrieval...")
+        print(f"   Building word index for {len(corpus)} sentences...")
+        
+        # Initialize data structures
+        self._corpus_word_index = {}  # word -> list of sentence indices containing it
+        self._corpus_word_cache = {}  # sent_idx -> extracted words
+        self._corpus_texts = {}       # sent_idx -> original text
+        
+        # Process each sentence in corpus
+        for sent_idx, (source_text, target_text) in enumerate(tqdm(corpus, desc="Indexing corpus")):
+            # Extract and cache words for this sentence
+            words = _extract_words(source_text, self.min_word_length)
+            self._corpus_word_cache[sent_idx] = words
+            self._corpus_texts[sent_idx] = source_text
+            
+            # Build word-to-sentence index
+            for word in set(words):  # Use set to avoid duplicates
+                if word not in self._corpus_word_index:
+                    self._corpus_word_index[word] = []
+                self._corpus_word_index[word].append(sent_idx)
+        
+        self._indexed_corpus_id = corpus_id
+        
+        # Print statistics
+        total_unique_words = len(self._corpus_word_index)
+        avg_sentences_per_word = sum(len(sentences) for sentences in self._corpus_word_index.values()) / total_unique_words
+        print(f"✅ Corpus preprocessing complete:")
+        print(f"   📚 {len(corpus)} sentences indexed")
+        print(f"   📝 {total_unique_words} unique words found")
+        print(f"   📊 Average {avg_sentences_per_word:.1f} sentences per word")
+    
+    def get_similar_examples_batch(self, queries: List[str], corpus: List[Tuple], k: int) -> List[List[Tuple]]:
+        """
+        Efficiently process multiple queries using precomputed corpus index.
+        
+        Args:
+            queries: List of query strings
+            corpus: List of (source, target) text pairs  
+            k: Number of examples per query (-1 for all matches)
+            
+        Returns:
+            List of example lists, one per query
+        """
+        # Preprocess corpus if needed
+        self._preprocess_corpus(corpus)
+        
+        use_all_results = (k == -1)
+        if use_all_results:
+            print(f"🚀 BATCH processing {len(queries)} queries using optimized Word-based Parallel vectorizer")
+            print(f"   Getting ALL word-matched examples (top-{self.top_n_per_word} per word)")
+        else:
+            print(f"🚀 BATCH processing {len(queries)} queries using optimized Word-based Parallel vectorizer")
+            print(f"   Getting {k} few-shot examples (top-{self.top_n_per_word} per word)")
+        
+        results = []
+        
+        # Process each query using the precomputed index
+        for query_idx, query in enumerate(tqdm(queries, desc="Processing queries")):
+            query_words = _extract_words(query, self.min_word_length)
+            
+            if not query_words:
+                print(f"Warning: No valid words found in query {query_idx+1}")
+                results.append(corpus[:k] if k > 0 else [])
+                continue
+            
+            # Use precomputed index for efficient processing
+            sentence_aggregate_scores = {}
+            total_word_matches = 0
+            
+            for word in query_words:
+                # Get candidate sentences for this word from precomputed index
+                candidate_sentence_indices = self._corpus_word_index.get(word, [])
+                word_matches = []
+                
+                # Only check sentences that contain similar words (HUGE optimization!)
+                for sent_idx in candidate_sentence_indices:
+                    cached_sentence_words = self._corpus_word_cache[sent_idx]
+                    
+                    # Find best similarity with precomputed words
+                    best_similarity = 0.0
+                    for sentence_word in cached_sentence_words:
+                        similarity = _efficient_string_similarity(word, sentence_word)
+                        if similarity > best_similarity:
+                            best_similarity = similarity
+                    
+                    if best_similarity >= self.similarity_threshold:
+                        word_matches.append((sent_idx, best_similarity))
+                
+                # Sort and take top matches for this word
+                word_matches.sort(key=lambda x: x[1], reverse=True)
+                top_matches_for_word = word_matches[:self.top_n_per_word]
+                total_word_matches += len(top_matches_for_word)
+                
+                # Aggregate scores
+                for sent_idx, score in top_matches_for_word:
+                    if sent_idx not in sentence_aggregate_scores:
+                        sentence_aggregate_scores[sent_idx] = 0.0
+                    sentence_aggregate_scores[sent_idx] += score
+            
+            # Sort sentences by aggregate score and select results
+            sorted_sentences = sorted(
+                sentence_aggregate_scores.items(), 
+                key=lambda x: x[1], 
+                reverse=True
+            )
+            
+            if use_all_results:
+                top_indices = [idx for idx, score in sorted_sentences]
+            else:
+                top_indices = [idx for idx, score in sorted_sentences[:k]]
+            
+            query_results = [corpus[i] for i in top_indices]
+            results.append(query_results)
+        
+        print(f"✅ Batch processing complete: processed {len(queries)} queries efficiently")
+        return results
+    
+    def get_similar_examples(self, query: str, corpus: List[Tuple], k: int) -> List[Tuple]:
+        """
+        Get few-shot examples using word-based parallel sentence retrieval.
+        
+        For each word in the query, retrieves the top n sentences containing 
+        that word or close matches, then returns the top k unique sentences overall.
+        
+        Args:
+            query: Query text to find similar examples for
+            corpus: List of (source, target) text pairs
+            k: Final number of examples to retrieve (use -1 for all retrieved examples)
+            
+        Returns:
+            List of top-k most relevant (source, target) pairs (or all if k=-1)
+        """
+        use_all_results = (k == -1)
+        if use_all_results:
+            print(f"Getting ALL word-matched examples using Word-based Parallel vectorizer "
+                  f"(top-{self.top_n_per_word} per word)")
+        else:
+            print(f"Getting {k} few-shot examples using Word-based Parallel vectorizer "
+                  f"(top-{self.top_n_per_word} per word)")
+        
+        if k < 1 and not use_all_results:
             return []
         
         # Extract source texts for similarity computation
@@ -338,39 +529,66 @@ class WordBasedLCSRetriever(BaseRetriever):
         
         print(f"Processing query with {len(query_words)} words: {query_words}")
         
-        # Score each sentence in the corpus
-        sentence_scores = {}
+        # For each word, find top n matching sentences
+        word_sentence_matches = {}  # word -> [(sentence_idx, score), ...]
+        sentence_aggregate_scores = {}  # sentence_idx -> aggregate_score
         
-        for sent_idx, source_text in enumerate(source_texts):
-            total_score = 0.0
-            matched_words = 0
+        for word in query_words:
+            word_matches = []
             
-            # For each word in the query, find best match in this sentence
-            for query_word in query_words:
+            # Score all sentences for this word
+            for sent_idx, source_text in enumerate(source_texts):
                 word_score = _score_sentence_for_word(
-                    query_word, source_text, self.similarity_threshold
+                    word, source_text, self.similarity_threshold
                 )
                 if word_score > 0:
-                    total_score += word_score
-                    matched_words += 1
+                    word_matches.append((sent_idx, word_score))
             
-            # Calculate final score: average similarity * coverage factor
-            if matched_words > 0:
-                avg_similarity = total_score / matched_words
-                coverage = matched_words / len(query_words)
-                final_score = avg_similarity * coverage
-                sentence_scores[sent_idx] = final_score
-            else:
-                sentence_scores[sent_idx] = 0.0
+            # Sort by score and take top n for this word
+            word_matches.sort(key=lambda x: x[1], reverse=True)
+            top_matches_for_word = word_matches[:self.top_n_per_word]
+            word_sentence_matches[word] = top_matches_for_word
+            
+            # Aggregate scores for final ranking
+            for sent_idx, score in top_matches_for_word:
+                if sent_idx not in sentence_aggregate_scores:
+                    sentence_aggregate_scores[sent_idx] = 0.0
+                sentence_aggregate_scores[sent_idx] += score
         
-        # Sort sentences by score and return top-k
-        sorted_sentences = sorted(sentence_scores.items(), key=lambda x: x[1], reverse=True)
+        # Debug information
+        total_word_matches = sum(len(matches) for matches in word_sentence_matches.values())
+        unique_sentences = len(sentence_aggregate_scores)
+        print(f"Found {total_word_matches} total word-sentence matches across {unique_sentences} unique sentences")
         
-        # Get top-k indices
-        top_k_indices = [idx for idx, score in sorted_sentences[:k]]
+        # Sort sentences by aggregate score and return top k
+        sorted_sentences = sorted(
+            sentence_aggregate_scores.items(), 
+            key=lambda x: x[1], 
+            reverse=True
+        )
+        
+        # Get indices - either top-k or all available
+        if use_all_results:
+            top_indices = [idx for idx, score in sorted_sentences]
+            actual_k = len(top_indices)
+            print(f"Using all {actual_k} word-matched sentences")
+        else:
+            top_indices = [idx for idx, score in sorted_sentences[:k]]
+            actual_k = min(k, len(sorted_sentences))
         
         # Print some debugging info
         if sorted_sentences:
-            print(f"Top sentence scores: {[(idx, f'{score:.3f}') for idx, score in sorted_sentences[:min(5, len(sorted_sentences))]]}")
+            show_count = min(5, len(sorted_sentences))
+            print(f"Top sentence aggregate scores: {[(idx, f'{score:.3f}') for idx, score in sorted_sentences[:show_count]]}")
         
-        return [corpus[i] for i in top_k_indices]
+        # Show word-level breakdown for debugging
+        if len(query_words) <= 10:  # Only show details for reasonable number of words
+            print("Word-level matches breakdown:")
+            for word, matches in word_sentence_matches.items():
+                if matches:
+                    match_info = [(idx, f"{score:.3f}") for idx, score in matches[:3]]
+                    print(f"  '{word}': {len(matches)} matches, top 3: {match_info}")
+        
+        return [corpus[i] for i in top_indices]
+
+

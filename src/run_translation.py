@@ -31,6 +31,9 @@ from sklearn.model_selection import train_test_split
 import random
 import pandas as pd
 
+# Import text normalization
+from text_normalization import normalize_text, normalize_parallel_texts
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -129,6 +132,10 @@ def process_translations(x, src_lang: str, tgt_lang: str):
 
     source_text = texts[selected_source_idx] if selected_source_idx is not None and selected_source_idx < len(texts) else ""
     target_text = texts[selected_target_idx] if selected_target_idx is not None and selected_target_idx < len(texts) else ""
+
+    # Apply text normalization
+    source_text = normalize_text(source_text) if source_text else ""
+    target_text = normalize_text(target_text) if target_text else ""
 
     return {
         "source": source_text,
@@ -245,12 +252,19 @@ def load_csv_data(csv_path, source_col="source_text", target_col="target_text"):
     df = df.dropna(subset=[source_col, target_col])
     df = df[(df[source_col].str.strip() != '') & (df[target_col].str.strip() != '')]
     
-    # Create list of dictionaries for Dataset.from_list
+    # Create list of dictionaries for Dataset.from_list with text normalization
     data_pairs = []
     for _, row in df.iterrows():
+        source_text = str(row[source_col]).strip()
+        target_text = str(row[target_col]).strip()
+        
+        # Apply text normalization
+        source_text = normalize_text(source_text) if source_text else ""
+        target_text = normalize_text(target_text) if target_text else ""
+        
         data_pairs.append({
-            "source": str(row[source_col]).strip(),
-            "target": str(row[target_col]).strip()
+            "source": source_text,
+            "target": target_text
         })
     
     logger.info(f"Loaded {len(data_pairs)} parallel translation pairs from CSV")
@@ -352,6 +366,10 @@ def load_scripture_files(source_path, target_path, verse_path=None, seed=114):
         if accumulated_src and accumulated_trg:
             src_text = " ".join(accumulated_src)
             trg_text = " ".join(accumulated_trg)
+            
+            # Apply text normalization
+            src_text = normalize_text(src_text) if src_text else ""
+            trg_text = normalize_text(trg_text) if trg_text else ""
             
             # Create verse reference (span if multiple verses)
             if verse_refs and verse_span_refs:

@@ -102,7 +102,7 @@ class ArgumentValidator:
         # Validate CSV file and columns
         ArgumentValidator.validate_csv_columns(
             args.csv_path, 
-            ['source_text', 'target_text', 'pred_target_text']
+            ['source_text', 'target_text', 'pred_text']
         )
         
         # Validate few-shot corpus if provided

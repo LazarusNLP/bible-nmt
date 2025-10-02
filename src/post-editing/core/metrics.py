@@ -53,6 +53,187 @@ class MetricsCalculator:
         eval_result = {k: round(v, 4) for k, v in eval_result.items()}
         return eval_result
 
+    @staticmethod
+    def calculate_batch_individual_metrics(rows_data: List[tuple]) -> List[dict]:
+        """
+        Calculate individual metrics for multiple rows efficiently by batching metric calculations.
+        
+        Args:
+            rows_data: List of tuples (original_text, post_edited_text, reference_text)
+            
+        Returns:
+            List of dictionaries with individual metric scores for each row
+        """
+        if not rows_data:
+            return []
+        
+        # Separate data for batch processing
+        original_texts = []
+        post_edited_texts = []
+        reference_texts = []
+        
+        for original, post_edited, reference in rows_data:
+            original_texts.append(original.strip())
+            post_edited_texts.append(post_edited.strip())
+            reference_texts.append(reference.strip())
+        
+        # Load evaluation metrics once
+        chrf = evaluate.load("chrf")
+        spbleu = evaluate.load("sacrebleu")
+        
+        # Batch calculate metrics for original texts
+        original_spbleu_results = spbleu.compute(
+            predictions=original_texts,
+            references=[[ref] for ref in reference_texts],
+            tokenize="flores200"
+        )
+        
+        original_chrf3_results = chrf.compute(
+            predictions=original_texts,
+            references=[[ref] for ref in reference_texts],
+            beta=3
+        )
+        
+        original_chrfpp_results = chrf.compute(
+            predictions=original_texts,
+            references=[[ref] for ref in reference_texts],
+            word_order=2
+        )
+        
+        # Batch calculate metrics for post-edited texts
+        post_edited_spbleu_results = spbleu.compute(
+            predictions=post_edited_texts,
+            references=[[ref] for ref in reference_texts],
+            tokenize="flores200"
+        )
+        
+        post_edited_chrf3_results = chrf.compute(
+            predictions=post_edited_texts,
+            references=[[ref] for ref in reference_texts],
+            beta=3
+        )
+        
+        post_edited_chrfpp_results = chrf.compute(
+            predictions=post_edited_texts,
+            references=[[ref] for ref in reference_texts],
+            word_order=2
+        )
+        
+        # Combine results for each row
+        results = []
+        for i in range(len(rows_data)):
+            # Extract individual scores from batch results
+            original_spbleu = original_spbleu_results["precisions"][i] if "precisions" in original_spbleu_results else original_spbleu_results["score"]
+            original_chrf3 = original_chrf3_results["score"] if isinstance(original_chrf3_results["score"], (int, float)) else original_chrf3_results["score"][i] if hasattr(original_chrf3_results["score"], '__getitem__') else original_chrf3_results["score"]
+            original_chrfpp = original_chrfpp_results["score"] if isinstance(original_chrfpp_results["score"], (int, float)) else original_chrfpp_results["score"][i] if hasattr(original_chrfpp_results["score"], '__getitem__') else original_chrfpp_results["score"]
+            
+            post_edited_spbleu = post_edited_spbleu_results["precisions"][i] if "precisions" in post_edited_spbleu_results else post_edited_spbleu_results["score"]
+            post_edited_chrf3 = post_edited_chrf3_results["score"] if isinstance(post_edited_chrf3_results["score"], (int, float)) else post_edited_chrf3_results["score"][i] if hasattr(post_edited_chrf3_results["score"], '__getitem__') else post_edited_chrf3_results["score"]
+            post_edited_chrfpp = post_edited_chrfpp_results["score"] if isinstance(post_edited_chrfpp_results["score"], (int, float)) else post_edited_chrfpp_results["score"][i] if hasattr(post_edited_chrfpp_results["score"], '__getitem__') else post_edited_chrfpp_results["score"]
+            
+            # Calculate improvements
+            spbleu_improvement = post_edited_spbleu - original_spbleu
+            chrf3_improvement = post_edited_chrf3 - original_chrf3
+            chrfpp_improvement = post_edited_chrfpp - original_chrfpp
+            
+            results.append({
+                "original_metrics": {
+                    "spbleu": round(original_spbleu, 4),
+                    "chrf3": round(original_chrf3, 4),
+                    "chrfpp": round(original_chrfpp, 4)
+                },
+                "post_edited_metrics": {
+                    "spbleu": round(post_edited_spbleu, 4),
+                    "chrf3": round(post_edited_chrf3, 4),
+                    "chrfpp": round(post_edited_chrfpp, 4)
+                },
+                "improvements": {
+                    "spbleu": round(spbleu_improvement, 4),
+                    "chrf3": round(chrf3_improvement, 4),
+                    "chrfpp": round(chrfpp_improvement, 4)
+                }
+            })
+        
+        return results
+
+    @staticmethod
+    def calculate_individual_metrics(original_text: str, post_edited_text: str, reference_text: str) -> dict:
+        """
+        Calculate individual sentence metrics for the three specified metrics.
+        
+        Args:
+            original_text: Original MT output
+            post_edited_text: Post-edited output  
+            reference_text: Ground truth reference
+            
+        Returns:
+            Dictionary with individual metric scores for original and post-edited texts
+        """
+        # Clean texts
+        original_clean = original_text.strip()
+        post_edited_clean = post_edited_text.strip()
+        reference_clean = reference_text.strip()
+        
+        # Load evaluation metrics
+        chrf = evaluate.load("chrf")
+        spbleu = evaluate.load("sacrebleu")
+        
+        # Calculate metrics for original text
+        original_spbleu = spbleu.compute(
+            predictions=[original_clean], 
+            references=[[reference_clean]], 
+            tokenize="flores200"
+        )["score"]
+        
+        original_chrf3 = chrf.compute(
+            predictions=[original_clean], 
+            references=[[reference_clean]], 
+            beta=3
+        )["score"]
+        
+        original_chrfpp = chrf.compute(
+            predictions=[original_clean], 
+            references=[[reference_clean]], 
+            word_order=2
+        )["score"]
+        
+        # Calculate metrics for post-edited text
+        post_edited_spbleu = spbleu.compute(
+            predictions=[post_edited_clean], 
+            references=[[reference_clean]], 
+            tokenize="flores200"
+        )["score"]
+        
+        post_edited_chrf3 = chrf.compute(
+            predictions=[post_edited_clean], 
+            references=[[reference_clean]], 
+            beta=3
+        )["score"]
+        
+        post_edited_chrfpp = chrf.compute(
+            predictions=[post_edited_clean], 
+            references=[[reference_clean]], 
+            word_order=2
+        )["score"]
+        
+        return {
+            "original": {
+                "spbleu": original_spbleu,
+                "chrf3": original_chrf3,
+                "chrfpp": original_chrfpp
+            },
+            "post_edited": {
+                "spbleu": post_edited_spbleu,
+                "chrf3": post_edited_chrf3,
+                "chrfpp": post_edited_chrfpp
+            },
+            "improvements": {
+                "spbleu": round(post_edited_spbleu - original_spbleu, 4),
+                "chrf3": round(post_edited_chrf3 - original_chrf3, 4),
+                "chrfpp": round(post_edited_chrfpp - original_chrfpp, 4)
+            }
+        }
+
     @classmethod
     def calculate_metrics(cls, rows: List[Row]) -> dict:
         """Calculate all evaluation metrics including original MT and post-edited results with improvements."""

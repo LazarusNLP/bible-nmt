@@ -18,7 +18,7 @@ python src/run_finetune.py \
     --model_name "/data/projects/punim0478/setiawand/bible-nmt/nllb-200-distilled-600M-scripture_files-engwebp-lex-5000/checkpoint-5000" \
     --max_length 300 \
     --num_beams 2 \
-    --per_device_train_batch_size 4 \
+    --per_device_train_batch_size 16 \
     --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps 8 \
     --learning_rate 1e-4 \
@@ -28,7 +28,7 @@ python src/run_finetune.py \
     --early_stopping_patience 4 \
     --validation_split 0.05 \
     --save_tokenized_data \
-    --torch_dtype "float32" \
+    --torch_dtype "bfloat16" \
     --attn_implementation "sdpa" \
     --seed 114
 

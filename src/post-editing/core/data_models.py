@@ -28,11 +28,17 @@ class Row(BaseModel):
     src_text: str
     tgt_text: str
     pred_tgt_text: str = Field(description="Original NLLB model prediction from input CSV")
-    post_edited_tgt_txt: Optional[str] = None
+    post_edited_tgt_txt: Optional[str] = None  # For post-editing mode
+    translated_tgt_txt: Optional[str] = None   # For translation mode
     src_lang: str = Field(description="Src lang alpha-2 code")
     tgt_lang: str = Field(description="Tgt lang alpha-2 code")
     src_lang_name: str = Field(description="Source language name")
     tgt_lang_name: str = Field(description="Target language name")
+    
+    # Individual metric improvements (post-edited - original)
+    spbleu_improvement: Optional[float] = None
+    chrf3_improvement: Optional[float] = None
+    chrfpp_improvement: Optional[float] = None
 
     @classmethod
     def get_savepath(cls, output_dir: str, model: str, csv_path: str, src: str, tgt: str) -> str:
@@ -41,7 +47,7 @@ class Row(BaseModel):
         return f"{output_dir}/{model.split('/')[-1]}_{csv_name}_{src}_{tgt}.csv"
 
     def get_messages(self, prompt_key: str = "default", few_shot_examples: List[tuple] = None, 
-                     glossary_entries: List[GlossaryEntry] = None) -> List[dict]:
+                     glossary_entries: List[GlossaryEntry] = None, translation_mode: bool = False) -> List[dict]:
         """Generate chat messages for this row."""
         # Get the prompt template
         prompt_template = get_prompt(prompt_key)
@@ -50,12 +56,21 @@ class Row(BaseModel):
         system_content = prompt_template["system"]
         
         # Use the user_template from prompt with proper variable substitution
-        base_user_content = prompt_template["user_template"].format(
-            src_lang_name=self.src_lang_name,
-            src_text=self.src_text,
-            tgt_lang_name=self.tgt_lang_name,
-            pred_text=self.pred_tgt_text
-        )
+        if translation_mode:
+            # For translation mode, don't include pred_text
+            base_user_content = prompt_template["user_template"].format(
+                src_lang_name=self.src_lang_name,
+                src_text=self.src_text,
+                tgt_lang_name=self.tgt_lang_name
+            )
+        else:
+            # For post-editing mode, include pred_text
+            base_user_content = prompt_template["user_template"].format(
+                src_lang_name=self.src_lang_name,
+                src_text=self.src_text,
+                tgt_lang_name=self.tgt_lang_name,
+                pred_text=self.pred_tgt_text
+            )
         
         # Add few-shot examples if provided
         if few_shot_examples:
