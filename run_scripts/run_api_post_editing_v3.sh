@@ -20,18 +20,19 @@ TGT="nfa"
 SRC_LANG_NAME="English"
 TGT_LANG_NAME="Dhao"
 
-# Function to run experiments for a given version and corpus type
+# Function to run experiment for a given Bible version
 run_experiment() {
     local VERSION=$1
-    local CORPUS_TYPE=$2  # "all", "nt", etc.
-    local CSV_PATH="/data/projects/punim0478/setiawand/bible-nmt/ebible-corpus/dhao-eng/${VERSION}/aligned-eng-${VERSION}-${CORPUS_TYPE}.csv"
+    local CSV_PATH="/data/projects/punim0478/setiawand/bible-nmt/ebible-corpus/dhao-eng/${VERSION}/aligned-eng-${VERSION}-ot.csv"
     local FEW_SHOT_CORPUS_PATH="/data/projects/punim0478/setiawand/bible-nmt/ebible-corpus/dhao-eng/${VERSION}/aligned-eng-${VERSION}-nt.csv"
     
     echo "=========================================="
-    echo "Running experiments for ${VERSION} - ${CORPUS_TYPE}"
+    echo "Running experiment for ${VERSION} with parallel_full+nt"
+    echo "Input: OT corpus"
+    echo "Few-shot: NT corpus + full parallel corpus"
     echo "=========================================="
     
-    # Run with parallel_full (using additional few-shot corpus)
+    # Run with parallel_full+nt (using both NT and full parallel corpora)
     python run_post_editing.py \
         --model_type "gemini" \
         --model_name "gemini-2.5-flash" \
@@ -40,47 +41,7 @@ run_experiment() {
         --tgt ${TGT} \
         --src_lang_name ${SRC_LANG_NAME} \
         --tgt_lang_name ${TGT_LANG_NAME} \
-        --output_dir "${BASE_OUTPUT}/gemini-2.5-flash-${VERSION}-dhao/${CORPUS_TYPE}/parallel_full" \
-        --prompt "dhao_post_editing" \
-        --few_shot_mode "parallel" \
-        --vectorizer "word_parallel" \
-        --few_shot_corpus_path ${ADDITIONAL_FEW_SHOT_CORPUS_PATH} \
-        --batch_size 100 \
-        --delay_between_batches 5.0 \
-        --top_n_per_word 5 \
-        --max_samples 500 \
-        --debug
-    
-    # Run with parallel_nt (using NT corpus)
-    python run_post_editing.py \
-        --model_type "gemini" \
-        --model_name "gemini-2.5-flash" \
-        --csv_path ${CSV_PATH} \
-        --src "eng" \
-        --tgt ${TGT} \
-        --src_lang_name ${SRC_LANG_NAME} \
-        --tgt_lang_name ${TGT_LANG_NAME} \
-        --output_dir "${BASE_OUTPUT}/gemini-2.5-flash-${VERSION}-dhao/${CORPUS_TYPE}/parallel_nt" \
-        --prompt "dhao_post_editing" \
-        --few_shot_mode "parallel" \
-        --vectorizer "word_parallel" \
-        --few_shot_corpus_path ${FEW_SHOT_CORPUS_PATH} \
-        --batch_size 100 \
-        --delay_between_batches 5.0 \
-        --top_n_per_word 5 \
-        --max_samples 500 \
-        --debug
-    
-    # Run with parallel_full+nt (using both corpora)
-    python run_post_editing.py \
-        --model_type "gemini" \
-        --model_name "gemini-2.5-flash" \
-        --csv_path ${CSV_PATH} \
-        --src "eng" \
-        --tgt ${TGT} \
-        --src_lang_name ${SRC_LANG_NAME} \
-        --tgt_lang_name ${TGT_LANG_NAME} \
-        --output_dir "${BASE_OUTPUT}/gemini-2.5-flash-${VERSION}-dhao/${CORPUS_TYPE}/parallel_full+nt" \
+        --output_dir "${BASE_OUTPUT}/gemini-2.5-flash-${VERSION}-dhao/parallel_full+nt" \
         --prompt "dhao_post_editing" \
         --few_shot_mode "parallel" \
         --vectorizer "word_parallel" \
@@ -91,7 +52,7 @@ run_experiment() {
         --max_samples 500 \
         --debug
     
-    echo "Completed experiments for ${VERSION} - ${CORPUS_TYPE}"
+    echo "Completed experiment for ${VERSION}"
     echo ""
 }
 
@@ -99,57 +60,30 @@ run_experiment() {
 # ENGLSV Experiments (perplexity: 102.87)
 # ==========================================
 
-echo "Starting experiments for englsv..."
-
-# Run englsv with full Bible (all)
-run_experiment "englsv" "all"
-
-# Sleep between corpus types
-echo "Sleeping for 2.5 minutes to avoid API rate limiting..."
-sleep 150
-
-# Run englsv with New Testament only
-run_experiment "englsv" "nt"
+echo "Starting experiment for englsv..."
+run_experiment "englsv"
 
 # Sleep between versions
-echo "Sleeping for 5 minutes before next version..."
-sleep 300
+echo "Sleeping for 2.5 minutes before next version..."
+sleep 150
 
 # ==========================================
 # ENGOJB Experiments (perplexity: 140.66)
 # ==========================================
 
-echo "Starting experiments for engojb..."
-
-# Run engojb with full Bible (all)
-run_experiment "engojb" "all"
-
-# Sleep between corpus types
-echo "Sleeping for 2.5 minutes to avoid API rate limiting..."
-sleep 150
-
-# Run engojb with New Testament only
-run_experiment "engojb" "nt"
+echo "Starting experiment for engojb..."
+run_experiment "engojb"
 
 # Sleep between versions
-echo "Sleeping for 5 minutes before next version..."
-sleep 300
+echo "Sleeping for 2.5 minutes before next version..."
+sleep 150
 
 # ==========================================
 # T4T Experiments (perplexity: 194.91)
 # ==========================================
 
-echo "Starting experiments for t4t..."
-
-# Run t4t with full Bible (all)
-run_experiment "t4t" "all"
-
-# Sleep between corpus types
-echo "Sleeping for 2.5 minutes to avoid API rate limiting..."
-sleep 150
-
-# Run t4t with New Testament only
-run_experiment "t4t" "nt"
+echo "Starting experiment for t4t..."
+run_experiment "t4t"
 
 echo "=========================================="
 echo "All experiments completed!"

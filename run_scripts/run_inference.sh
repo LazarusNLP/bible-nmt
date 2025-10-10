@@ -1,5 +1,5 @@
 #!/bin/bash
-iso_codes=(engBBE engwebp engwyc2017 engwyc2018)
+iso_codes=(englsv engojb t4t)
 
 BASE_INPUT_FILE="./ebible-corpus/dhao-eng"
 BASE_MODEL_PATH="./nllb-models/english/nllb-200-distilled-600M-eng"

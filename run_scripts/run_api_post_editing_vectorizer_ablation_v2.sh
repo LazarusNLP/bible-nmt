@@ -39,7 +39,7 @@ echo "=========================================="
 echo "Starting BM25 experiments..."
 echo "=========================================="
 
-for K_VALUE in 5 10 20 40; do
+for K_VALUE in 60 80 100; do
     echo ""
     echo "Running BM25 with k=${K_VALUE}..."
     
@@ -79,7 +79,7 @@ echo "=========================================="
 echo "Starting BGE-large-en-v1.5 (SOTA English bi-encoder) experiments..."
 echo "=========================================="
 
-for K_VALUE in 5 10 20 40; do
+for K_VALUE in 60 80 100; do
     echo ""
     echo "Running BGE with k=${K_VALUE}..."
     
@@ -119,7 +119,7 @@ echo "=========================================="
 echo "Starting ChrF-RAG (character n-gram similarity) experiments..."
 echo "=========================================="
 
-for K_VALUE in 5 10 20 40; do
+for K_VALUE in 60 80 100; do
     echo ""
     echo "Running ChrF-RAG with k=${K_VALUE}..."
     
@@ -149,57 +149,4 @@ done
 
 echo ""
 echo "ChrF-RAG experiments completed!"
-
-# ==========================================
-# Word Parallel Vectorizer Experiments
-# ==========================================
-
-echo ""
-echo "=========================================="
-echo "Starting Word Parallel experiments..."
-echo "=========================================="
-
-for TOP_N in 1 2 3; do
-    echo ""
-    echo "Running Word Parallel with top_n_per_word=${TOP_N}..."
-    
-    python run_post_editing.py \
-        --model_type "gemini" \
-        --model_name "gemini-2.5-flash" \
-        --csv_path ${CSV_PATH} \
-        --src ${SRC} \
-        --tgt ${TGT} \
-        --src_lang_name ${SRC_LANG_NAME} \
-        --tgt_lang_name ${TGT_LANG_NAME} \
-        --output_dir "${BASE_OUTPUT}/gemini-2.5-flash-webp-dhao/vectorizer_ablation/word_parallel_top${TOP_N}" \
-        --prompt "dhao_post_editing" \
-        --few_shot_mode "parallel" \
-        --vectorizer "word_parallel" \
-        --few_shot_corpus_path ${FEW_SHOT_CORPUS_PATH} ${ADDITIONAL_FEW_SHOT_CORPUS_PATH} \
-        --batch_size 100 \
-        --delay_between_batches 5.0 \
-        --top_n_per_word ${TOP_N} \
-        --max_samples 500 \
-        --debug
-    
-    echo "Completed Word Parallel top_n_per_word=${TOP_N}"
-    echo "Sleeping for 2 minutes..."
-    sleep 120
-done
-
-echo ""
-echo "Word Parallel experiments completed!"
-
-echo ""
-echo "================================================"
-echo "ALL VECTORIZER ABLATION EXPERIMENTS COMPLETED!"
-echo "================================================"
-echo "End time: $(date)"
-echo "Total experiments: 15"
-echo "  - BM25: 4 (k=5,10,20,40)"
-echo "  - BGE: 4 (k=5,10,20,40) [BAAI/bge-large-en-v1.5 - SOTA English retrieval]"
-echo "  - ChrF-RAG: 4 (k=5,10,20,40) [Character n-gram similarity]"
-echo "  - Word Parallel: 3 (top_n=1,2,3) [Adaptive word-based retrieval]"
-echo "Results saved in: results/gemini-2.5-flash-webp-dhao/vectorizer_ablation/"
-echo "================================================"
 
