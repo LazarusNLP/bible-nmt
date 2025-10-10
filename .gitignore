@@ -197,7 +197,6 @@ cython_debug/
 nllb*/
 unsloth_compiled_cache/
 Qwen3*/
-gemini*/
 gpt*/
 baseline/
 data/

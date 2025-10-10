@@ -1,0 +1,110 @@
+================================================================================
+⏱️  POST-EDITING PIPELINE PERFORMANCE ANALYSIS
+================================================================================
+Generated at: 2025-10-02 18:18:20
+
+📊 COMPONENT PERFORMANCE BREAKDOWN:
+------------------------------------------------------------
+
+LLM_INFERENCE:
+  Total Time: 3340.77s
+  Average Time: 668.15s
+  Min Time: 516.13s
+  Max Time: 837.31s
+  Call Count: 5
+  % of Total Pipeline: 66.2%
+
+INDIVIDUAL_METRICS_CALCULATION:
+  Total Time: 1285.15s
+  Average Time: 257.03s
+  Min Time: 247.55s
+  Max Time: 264.86s
+  Call Count: 5
+  % of Total Pipeline: 25.5%
+
+RAG_RETRIEVAL:
+  Total Time: 409.64s
+  Average Time: 409.64s
+  Min Time: 409.64s
+  Max Time: 409.64s
+  Call Count: 1
+  % of Total Pipeline: 8.1%
+
+FINAL_METRICS_CALCULATION:
+  Total Time: 9.73s
+  Average Time: 9.73s
+  Min Time: 9.73s
+  Max Time: 9.73s
+  Call Count: 1
+  % of Total Pipeline: 0.2%
+
+MESSAGE_GENERATION:
+  Total Time: 0.36s
+  Average Time: 0.07s
+  Min Time: 0.07s
+  Max Time: 0.07s
+  Call Count: 5
+  % of Total Pipeline: 0.0%
+
+GLOSSARY_SELECTION:
+  Total Time: 0.00s
+  Average Time: 0.00s
+  Min Time: 0.00s
+  Max Time: 0.00s
+  Call Count: 1
+  % of Total Pipeline: 0.0%
+
+DATA_LOADING:
+  Total Time: 0.00s
+  Average Time: 0.00s
+  Min Time: 0.00s
+  Max Time: 0.00s
+  Call Count: 1
+  % of Total Pipeline: 0.0%
+
+📈 DETAILED BATCH TIMINGS:
+------------------------------------------------------------
+
+Batch 1:
+  Rows processed: 100
+  Total batch time: 991.95s
+  message_generation: 0.07s
+  llm_inference: 731.42s
+  individual_metrics_calculation: 260.40s
+
+Batch 2:
+  Rows processed: 100
+  Total batch time: 1091.96s
+  message_generation: 0.07s
+  llm_inference: 837.31s
+  individual_metrics_calculation: 254.52s
+
+Batch 3:
+  Rows processed: 100
+  Total batch time: 991.41s
+  message_generation: 0.07s
+  llm_inference: 726.42s
+  individual_metrics_calculation: 264.86s
+
+Batch 4:
+  Rows processed: 100
+  Total batch time: 777.17s
+  message_generation: 0.07s
+  llm_inference: 529.49s
+  individual_metrics_calculation: 247.55s
+
+Batch 5:
+  Rows processed: 100
+  Total batch time: 774.08s
+  message_generation: 0.07s
+  llm_inference: 516.13s
+  individual_metrics_calculation: 257.82s
+
+🏁 PIPELINE SUMMARY:
+------------------------------------------------------------
+Total execution time: 5045.94s
+Total execution time: 84.10 minutes
+Total rows processed: 500
+Throughput: 0.10 rows/second
+
+================================================================================

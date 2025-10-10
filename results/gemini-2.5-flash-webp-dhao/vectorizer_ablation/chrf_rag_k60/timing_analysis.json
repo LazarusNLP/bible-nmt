@@ -1,0 +1,94 @@
+{
+  "data_loading": {
+    "total_time": 2.47955322265625e-05,
+    "average_time": 2.47955322265625e-05,
+    "min_time": 2.47955322265625e-05,
+    "max_time": 2.47955322265625e-05,
+    "call_count": 1
+  },
+  "rag_retrieval": {
+    "total_time": 11656.55344581604,
+    "average_time": 11656.55344581604,
+    "min_time": 11656.55344581604,
+    "max_time": 11656.55344581604,
+    "call_count": 1
+  },
+  "glossary_selection": {
+    "total_time": 3.314018249511719e-05,
+    "average_time": 3.314018249511719e-05,
+    "min_time": 3.314018249511719e-05,
+    "max_time": 3.314018249511719e-05,
+    "call_count": 1
+  },
+  "message_generation": {
+    "total_time": 0.02442145347595215,
+    "average_time": 0.00488429069519043,
+    "min_time": 0.004548788070678711,
+    "max_time": 0.005629062652587891,
+    "call_count": 5
+  },
+  "llm_inference": {
+    "total_time": 2124.204911470413,
+    "average_time": 424.84098229408266,
+    "min_time": 408.69226598739624,
+    "max_time": 446.86579489707947,
+    "call_count": 5
+  },
+  "individual_metrics_calculation": {
+    "total_time": 1265.2530510425568,
+    "average_time": 253.05061020851136,
+    "min_time": 242.46803641319275,
+    "max_time": 260.93125104904175,
+    "call_count": 5
+  },
+  "final_metrics_calculation": {
+    "total_time": 9.498669147491455,
+    "average_time": 9.498669147491455,
+    "min_time": 9.498669147491455,
+    "max_time": 9.498669147491455,
+    "call_count": 1
+  },
+  "total_pipeline_time": 15055.612821817398,
+  "batch_timings": [
+    {
+      "batch_id": 1,
+      "rows_processed": 100,
+      "message_generation": 0.005627632141113281,
+      "llm_inference": 416.8475239276886,
+      "individual_metrics_calculation": 242.46803450584412,
+      "total_batch_time": 659.3361933231354
+    },
+    {
+      "batch_id": 2,
+      "rows_processed": 100,
+      "message_generation": 0.004694223403930664,
+      "llm_inference": 422.3231146335602,
+      "individual_metrics_calculation": 255.9626133441925,
+      "total_batch_time": 678.3061528205872
+    },
+    {
+      "batch_id": 3,
+      "rows_processed": 100,
+      "message_generation": 0.004547595977783203,
+      "llm_inference": 446.8657925128937,
+      "individual_metrics_calculation": 258.0557680130005,
+      "total_batch_time": 704.9411034584045
+    },
+    {
+      "batch_id": 4,
+      "rows_processed": 100,
+      "message_generation": 0.0047588348388671875,
+      "llm_inference": 408.692263841629,
+      "individual_metrics_calculation": 247.8353762626648,
+      "total_batch_time": 656.5483832359314
+    },
+    {
+      "batch_id": 5,
+      "rows_processed": 100,
+      "message_generation": 0.004785299301147461,
+      "llm_inference": 429.47620582580566,
+      "individual_metrics_calculation": 260.93124890327454,
+      "total_batch_time": 690.4279816150665
+    }
+  ]
+}
