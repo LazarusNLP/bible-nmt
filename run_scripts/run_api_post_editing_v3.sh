@@ -24,8 +24,8 @@ TGT_LANG_NAME="Wycliffe"
 # Function to run experiment for a given Bible version
 run_experiment() {
     local VERSION=$1
-    local CSV_PATH="/data/projects/punim0478/setiawand/bible-nmt/ebible-corpus/dhao-eng/${VERSION}/aligned-eng-${VERSION}-ot.csv"
-    local FEW_SHOT_CORPUS_PATH="/data/projects/punim0478/setiawand/bible-nmt/ebible-corpus/dhao-eng/${VERSION}/aligned-eng-${VERSION}-nt.csv"
+    local CSV_PATH="/data/projects/punim0478/setiawand/bible-nmt/ebible-corpus/dhao-eng/${VERSION}+/aligned-eng-${VERSION}-ot.csv"
+    local FEW_SHOT_CORPUS_PATH="/data/projects/punim0478/setiawand/bible-nmt/ebible-corpus/dhao-eng/${VERSION}+/aligned-eng-${VERSION}-nt.csv"
     
     # ==========================================
     # COMMENTED OUT: parallel_full+nt mode
@@ -106,7 +106,7 @@ run_experiment() {
         --tgt ${TGT} \
         --src_lang_name ${SRC_LANG_NAME} \
         --tgt_lang_name ${TGT_LANG_NAME} \
-        --output_dir "${BASE_OUTPUT}/gemini-2.5-flash-${VERSION}/glossary_full+parallel_full+nt" \
+        --output_dir "${BASE_OUTPUT}/gemini-2.5-flash-${VERSION}+/glossary_full+parallel_full+nt" \
         --prompt "dhao_post_editing" \
         --few_shot_mode "both" \
         --glossary_mode "full" \
@@ -122,6 +122,17 @@ run_experiment() {
     echo "Completed all experiments for ${VERSION}"
     echo ""
 }
+
+# ==========================================
+# COMMENTED OUT: webp Experiments (perplexity: 102.87)
+# ==========================================
+
+echo "Starting experiment for webp..."
+run_experiment "engwebp"
+
+Sleep between versions
+echo "Sleeping for 2.5 minutes before next version..."
+sleep 150
 
 # ==========================================
 # COMMENTED OUT: ENGLSV Experiments (perplexity: 102.87)
@@ -156,21 +167,21 @@ run_experiment() {
 # ENGWYC2017 Experiments
 # ==========================================
 
-echo "Starting experiment for engwyc2017..."
-run_experiment "engwyc2017"
+# echo "Starting experiment for engwyc2017..."
+# run_experiment "engwyc2017"
 
-# Sleep between versions
-echo "Sleeping for 2.5 minutes before next version..."
-sleep 150
+# # Sleep between versions
+# echo "Sleeping for 2.5 minutes before next version..."
+# sleep 150
 
 # ==========================================
 # ENGWYC2018 Experiments
 # ==========================================
 
-echo "Starting experiment for engwyc2018..."
-run_experiment "engwyc2018"
+# echo "Starting experiment for engwyc2018..."
+# run_experiment "engwyc2018"
 
-echo "=========================================="
-echo "All experiments completed!"
-echo "=========================================="
+# echo "=========================================="
+# echo "All experiments completed!"
+# echo "=========================================="
 

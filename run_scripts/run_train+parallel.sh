@@ -10,7 +10,7 @@ for eng_version in "${eng_version[@]}"; do
         --source_text_path "/data/projects/punim0478/setiawand/bible-nmt/ebible-corpus/eng/corpus/${eng_version}.txt" \
         --target_text_path "/data/projects/punim0478/setiawand/bible-nmt/ebible-corpus/dhao-eng/nfa-nfa.txt" \
         --verse_text_path "/data/projects/punim0478/setiawand/bible-nmt/ebible-corpus/vref.txt" \
-        --output_dir "nllb-models/english/nllb-200-distilled-600M-${eng_version}-${code}-extra-parallel" \
+        --output_dir "nllb-models/english/nllb-200-distilled-600M-${eng_version}-${code}-extra-parallel-v2" \
         --additional_csv_path "/data/projects/punim0478/setiawand/bible-nmt/lexical-resource/eng-dhao/dhao-english-parallel-full.csv" \
         --src_lang "eng" \
         --tgt_lang "$code" \
@@ -26,11 +26,25 @@ for eng_version in "${eng_version[@]}"; do
         --gradient_accumulation_steps 4 \
         --learning_rate 2e-4 \
         --label_smoothing_factor 0.2 \
-        --max_steps 5000 \
+        --max_steps 7000 \
         --warmup_steps 1000 \
         --early_stopping_patience 4 \
         --save_tokenized_data \
         --torch_dtype "bfloat16" \
         --attn_implementation "sdpa"
+
+    python src/run_evaluation.py \
+      --model_name "nllb-models/english/nllb-200-distilled-600M-eng-${code}-nfa-extra-parallel-v2/checkpoint-5000" \
+      --dataset_name "scripture_files" \
+      --verse_text_path "/data/projects/punim0478/setiawand/ebible/metadata/vref.txt" \
+      --src_lang eng \
+      --tgt_lang "$code" \
+      --src_lang_nllb eng_Latn \
+      --tgt_lang_nllb "${code}_Latn" \
+      --max_length 400 \
+      --num_beams 8 \
+      --per_device_eval_batch_size 16 || exit 1
   done
 done
+
+

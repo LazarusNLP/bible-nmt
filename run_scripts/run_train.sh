@@ -1,7 +1,7 @@
 #!/bin/bash
 
 iso_codes=(nfa)
-eng_version=(eng-engojb eng-englsv eng-t4t)
+eng_version=(eng-engwebp)
 for eng_version in "${eng_version[@]}"; do
   for code in "${iso_codes[@]}"; do
     echo "Running for target language: $code" 
@@ -10,7 +10,7 @@ for eng_version in "${eng_version[@]}"; do
         --source_text_path "/data/projects/punim0478/setiawand/bible-nmt/ebible-corpus/eng/corpus/${eng_version}.txt" \
         --target_text_path "/data/projects/punim0478/setiawand/bible-nmt/ebible-corpus/dhao-eng/nfa-nfa.txt" \
         --verse_text_path "/data/projects/punim0478/setiawand/bible-nmt/ebible-corpus/vref.txt" \
-        --output_dir "nllb-models/english/nllb-200-distilled-600M-${eng_version}-${code}" \
+        --output_dir "nllb-models/english/nllb-200-distilled-600M-${eng_version}-${code}-7000-epochs" \
         --src_lang "eng" \
         --tgt_lang "$code" \
         --csv_source_col "source_text" \
@@ -25,7 +25,7 @@ for eng_version in "${eng_version[@]}"; do
         --gradient_accumulation_steps 4 \
         --learning_rate 2e-4 \
         --label_smoothing_factor 0.2 \
-        --max_steps 5000 \
+        --max_steps 7000 \
         --warmup_steps 1000 \
         --early_stopping_patience 4 \
         --save_tokenized_data \
