@@ -54,7 +54,7 @@ python run_post_editing.py \
     --prompt "dhao_post_editing" \
     --few_shot_mode "parallel" \
     --vectorizer "random" \
-    --few_shot_corpus_path ${FEW_SHOT_CORPUS_PATH} ${ADDITIONAL_FEW_SHOT_CORPUS_PATH} \
+    --few_shot_corpus_path ${FEW_SHOT_CORPUS_PATH} \
     --batch_size 100 \
     --delay_between_batches 5.0 \
     --num_few_shot 5 \
