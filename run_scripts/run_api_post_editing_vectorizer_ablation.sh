@@ -31,16 +31,16 @@ echo "Start time: $(date)"
 echo "================================================"
 
 # ==========================================
-# Random Baseline Vectorizer Experiments
+# Random Baseline Direct Translation Experiments
 # ==========================================
 
 echo ""
 echo "=========================================="
-echo "Starting Random Baseline experiments..."
+echo "Starting Random Baseline Direct Translation experiments..."
 echo "=========================================="
 
 echo ""
-echo "Running Random Baseline with k=5..."
+echo "Running Random Baseline Direct Translation with k=5..."
 
 python run_post_editing.py \
     --model_type "gemini" \
@@ -50,8 +50,8 @@ python run_post_editing.py \
     --tgt ${TGT} \
     --src_lang_name ${SRC_LANG_NAME} \
     --tgt_lang_name ${TGT_LANG_NAME} \
-    --output_dir "${BASE_OUTPUT}/gemini-2.5-flash-webp-dhao/vectorizer_ablation/random_k5" \
-    --prompt "dhao_post_editing" \
+    --output_dir "${BASE_OUTPUT}/gemini-2.5-flash-translation-webp-dhao/llm_baseline_random_k5" \
+    --prompt "dhao_translation" \
     --few_shot_mode "parallel" \
     --vectorizer "random" \
     --few_shot_corpus_path ${FEW_SHOT_CORPUS_PATH} \
@@ -59,12 +59,13 @@ python run_post_editing.py \
     --delay_between_batches 5.0 \
     --num_few_shot 5 \
     --max_samples 500 \
+    --translation-mode \
     --debug
 
-echo "Completed Random Baseline k=5"
+echo "Completed Random Baseline Direct Translation k=5"
 
 echo ""
-echo "Random Baseline experiments completed!"
+echo "Random Baseline Direct Translation experiments completed!"
 
 # ==========================================
 # BM25 Vectorizer Experiments (COMMENTED OUT)
@@ -228,14 +229,15 @@ echo "Random Baseline experiments completed!"
 
 echo ""
 echo "================================================"
-echo "RANDOM BASELINE EXPERIMENT COMPLETED!"
+echo "RANDOM BASELINE DIRECT TRANSLATION EXPERIMENT COMPLETED!"
 echo "================================================"
 echo "End time: $(date)"
 echo "Total experiments: 1"
-echo "  - Random Baseline: 1 (k=5) [Random selection baseline for comparison]"
+echo "  - Random Baseline Direct Translation: 1 (k=5) [Random few-shot baseline for direct translation]"
 echo "Results saved in: results/gemini-2.5-flash-webp-dhao/vectorizer_ablation/"
 echo ""
-echo "NOTE: Other experiments (BM25, BGE, ChrF-RAG, Word Parallel) have been commented out."
+echo "NOTE: This runs DIRECT TRANSLATION (not post-editing) using random few-shot examples"
+echo "      Other experiments (BM25, BGE, ChrF-RAG, Word Parallel) have been commented out."
 echo "      Uncomment them in the script if you want to run the full ablation study."
 echo "================================================"
 
