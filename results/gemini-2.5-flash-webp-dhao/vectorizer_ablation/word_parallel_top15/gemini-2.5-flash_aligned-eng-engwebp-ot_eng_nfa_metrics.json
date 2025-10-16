@@ -1,0 +1,26 @@
+{
+  "original_mt_metrics": {
+    "bleu": 8.0602,
+    "sacrebleu": 5.3923,
+    "spbleu": 7.6587,
+    "chrf": 28.5904,
+    "chrf3": 30.1923,
+    "chrf++": 27.1123
+  },
+  "post_edited_metrics": {
+    "bleu": 16.0388,
+    "sacrebleu": 10.2028,
+    "spbleu": 18.822,
+    "chrf": 37.1466,
+    "chrf3": 37.3506,
+    "chrf++": 35.1609
+  },
+  "improvements": {
+    "bleu": 7.9786,
+    "sacrebleu": 4.8105,
+    "spbleu": 11.1633,
+    "chrf": 8.5562,
+    "chrf3": 7.1583,
+    "chrf++": 8.0486
+  }
+}
