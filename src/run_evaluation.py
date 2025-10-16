@@ -235,6 +235,10 @@ def load_scripture_files_pre_split_from_model_dir(model_name_path: str) -> Datas
     # Required splits: validation and test
     validation_ds = read_parallel("validation")
     test_ds = read_parallel("test")
+    
+    # Limit test split to first 500 verses to match run_inference.py behavior
+    if len(test_ds) > 500:
+        test_ds = test_ds.select(range(500))
 
     # Optional train split
     try:
@@ -242,9 +246,46 @@ def load_scripture_files_pre_split_from_model_dir(model_name_path: str) -> Datas
     except Exception:
         train_ds = Dataset.from_list([])
 
-    return DatasetDict({
+    return DatasetDict({ 
         "train": train_ds,
         "validation": validation_ds,
+        "test": test_ds,
+    })
+
+
+def load_csv_file(csv_path: str) -> DatasetDict:
+    """Load CSV file with verse, source_text, target_text columns."""
+    import pandas as pd
+    
+    print(f"Loading CSV file: {csv_path}")
+    df = pd.read_csv(csv_path)
+    
+    # Check if required columns exist
+    required_cols = ['verse', 'source_text', 'target_text']
+    missing_cols = [col for col in required_cols if col not in df.columns]
+    if missing_cols:
+        raise ValueError(f"Missing required columns in CSV: {missing_cols}")
+    
+    # Limit to first 500 rows to match run_inference.py behavior
+    if len(df) > 500:
+        df = df.head(500)
+        print(f"Limited to first 500 rows for consistency with inference")
+    
+    # Apply text normalization
+    normalized_data = []
+    for _, row in df.iterrows():
+        normalized_data.append({
+            "verse_id": str(row["verse"]),
+            "source_text": normalize_text(row["source_text"]) if row["source_text"] else "",
+            "target_text": normalize_text(row["target_text"]) if row["target_text"] else ""
+        })
+    
+    test_ds = Dataset.from_list(normalized_data)
+    print(f"Loaded CSV with {len(test_ds)} rows")
+    
+    return DatasetDict({
+        "train": Dataset.from_list([]),
+        "validation": Dataset.from_list([]),
         "test": test_ds,
     })
 
@@ -255,7 +296,7 @@ def parse_args():
     parser.add_argument(
         "--dataset_name",
         type=str,
-        choices=["bible-nlp/biblenlp-corpus", "LazarusNLP/alkitab-sabda-mt", "Davidsamuel101/ebible_local_ind_corpus", "scripture_files"],
+        choices=["bible-nlp/biblenlp-corpus", "LazarusNLP/alkitab-sabda-mt", "Davidsamuel101/ebible_local_ind_corpus", "scripture_files", "csv_file"],
     )
     parser.add_argument("--src_lang", type=str, default="ind")
     parser.add_argument("--tgt_lang", type=str, default="btx")
@@ -266,6 +307,9 @@ def parse_args():
     parser.add_argument("--source_text_path", type=str, default=None, help="Path to source language scripture text file")
     parser.add_argument("--target_text_path", type=str, default=None, help="Path to target language scripture text file")
     parser.add_argument("--verse_text_path", type=str, default=None, help="Path to verse reference file (e.g., GEN 1:1)")
+    
+    # CSV file path (for dataset_name="csv_file")
+    parser.add_argument("--csv_file_path", type=str, default=None, help="Path to CSV file with verse, source_text, target_text columns")
     
     parser.add_argument("--dataset_split_name", type=str, default="test")
     parser.add_argument("--book_name", type=str, default=None)
@@ -293,6 +337,10 @@ def main(args):
         dataset = load_ebible_local_ind_corpus(src_lang, tgt_lang)
     elif dataset_name == "scripture_files":
         dataset = load_scripture_files_pre_split_from_model_dir(args.model_name)
+    elif dataset_name == "csv_file":
+        if not args.csv_file_path:
+            raise ValueError("When using csv_file, you must provide --csv_file_path")
+        dataset = load_csv_file(args.csv_file_path)
 
     # Ensure output directory exists
     if not output_dir:
@@ -402,7 +450,7 @@ def main(args):
                         batch["source_text"],
                         batch_size=args.per_device_eval_batch_size,
                         max_length=args.max_length,
-                        num_beams=2,
+                        num_beams=args.num_beams,
                     )
                 ]
             # Handle different verse field names - scripture_files and some datasets use "verse_id", others use "verse"

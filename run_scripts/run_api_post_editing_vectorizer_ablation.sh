@@ -31,41 +31,41 @@ echo "Start time: $(date)"
 echo "================================================"
 
 # ==========================================
-# Random Baseline Direct Translation Experiments
+# Random Baseline Direct Translation Experiments (COMMENTED OUT)
 # ==========================================
 
-echo ""
-echo "=========================================="
-echo "Starting Random Baseline Direct Translation experiments..."
-echo "=========================================="
+# echo ""
+# echo "=========================================="
+# echo "Starting Random Baseline Direct Translation experiments..."
+# echo "=========================================="
 
-echo ""
-echo "Running Random Baseline Direct Translation with k=5..."
+# echo ""
+# echo "Running Random Baseline Direct Translation with k=5..."
 
-python run_post_editing.py \
-    --model_type "gemini" \
-    --model_name "gemini-2.5-flash" \
-    --csv_path ${CSV_PATH} \
-    --src ${SRC} \
-    --tgt ${TGT} \
-    --src_lang_name ${SRC_LANG_NAME} \
-    --tgt_lang_name ${TGT_LANG_NAME} \
-    --output_dir "${BASE_OUTPUT}/gemini-2.5-flash-translation-webp-dhao/llm_baseline_random_k5" \
-    --prompt "dhao_translation" \
-    --few_shot_mode "parallel" \
-    --vectorizer "random" \
-    --few_shot_corpus_path ${FEW_SHOT_CORPUS_PATH} \
-    --batch_size 100 \
-    --delay_between_batches 5.0 \
-    --num_few_shot 5 \
-    --max_samples 500 \
-    --translation-mode \
-    --debug
+# python run_post_editing.py \
+#     --model_type "gemini" \
+#     --model_name "gemini-2.5-flash" \
+#     --csv_path ${CSV_PATH} \
+#     --src ${SRC} \
+#     --tgt ${TGT} \
+#     --src_lang_name ${SRC_LANG_NAME} \
+#     --tgt_lang_name ${TGT_LANG_NAME} \
+#     --output_dir "${BASE_OUTPUT}/gemini-2.5-flash-translation-webp-dhao/llm_baseline_random_k5" \
+#     --prompt "dhao_translation" \
+#     --few_shot_mode "parallel" \
+#     --vectorizer "random" \
+#     --few_shot_corpus_path ${FEW_SHOT_CORPUS_PATH} \
+#     --batch_size 100 \
+#     --delay_between_batches 5.0 \
+#     --num_few_shot 5 \
+#     --max_samples 500 \
+#     --translation-mode \
+#     --debug
 
-echo "Completed Random Baseline Direct Translation k=5"
+# echo "Completed Random Baseline Direct Translation k=5"
 
-echo ""
-echo "Random Baseline Direct Translation experiments completed!"
+# echo ""
+# echo "Random Baseline Direct Translation experiments completed!"
 
 # ==========================================
 # BM25 Vectorizer Experiments (COMMENTED OUT)
@@ -188,56 +188,56 @@ echo "Random Baseline Direct Translation experiments completed!"
 # echo "ChrF-RAG experiments completed!"
 
 # ==========================================
-# Word Parallel Vectorizer Experiments (COMMENTED OUT)
+# Word Parallel Vectorizer Experiments
 # ==========================================
 
-# echo ""
-# echo "=========================================="
-# echo "Starting Word Parallel experiments..."
-# echo "=========================================="
+echo ""
+echo "=========================================="
+echo "Starting Word Parallel experiments..."
+echo "=========================================="
 
-# for TOP_N in 1 2 3; do
-#     echo ""
-#     echo "Running Word Parallel with top_n_per_word=${TOP_N}..."
-#     
-#     python run_post_editing.py \
-#         --model_type "gemini" \
-#         --model_name "gemini-2.5-flash" \
-#         --csv_path ${CSV_PATH} \
-#         --src ${SRC} \
-#         --tgt ${TGT} \
-#         --src_lang_name ${SRC_LANG_NAME} \
-#         --tgt_lang_name ${TGT_LANG_NAME} \
-#         --output_dir "${BASE_OUTPUT}/gemini-2.5-flash-webp-dhao/vectorizer_ablation/word_parallel_top${TOP_N}" \
-#         --prompt "dhao_post_editing" \
-#         --few_shot_mode "parallel" \
-#         --vectorizer "word_parallel" \
-#         --few_shot_corpus_path ${FEW_SHOT_CORPUS_PATH} ${ADDITIONAL_FEW_SHOT_CORPUS_PATH} \
-#         --batch_size 100 \
-#         --delay_between_batches 5.0 \
-#         --top_n_per_word ${TOP_N} \
-#         --max_samples 500 \
-#         --debug
-#     
-#     echo "Completed Word Parallel top_n_per_word=${TOP_N}"
-#     echo "Sleeping for 2 minutes..."
-#     sleep 120
-# done
+for TOP_N in 10 15 20; do
+    echo ""
+    echo "Running Word Parallel with top_n_per_word=${TOP_N}..."
+    
+    python run_post_editing.py \
+        --model_type "gemini" \
+        --model_name "gemini-2.5-flash" \
+        --csv_path ${CSV_PATH} \
+        --src ${SRC} \
+        --tgt ${TGT} \
+        --src_lang_name ${SRC_LANG_NAME} \
+        --tgt_lang_name ${TGT_LANG_NAME} \
+        --output_dir "${BASE_OUTPUT}/gemini-2.5-flash-webp-dhao/vectorizer_ablation/word_parallel_top${TOP_N}" \
+        --prompt "dhao_post_editing" \
+        --few_shot_mode "parallel" \
+        --vectorizer "word_parallel" \
+        --few_shot_corpus_path ${FEW_SHOT_CORPUS_PATH} ${ADDITIONAL_FEW_SHOT_CORPUS_PATH} \
+        --batch_size 100 \
+        --delay_between_batches 5.0 \
+        --top_n_per_word ${TOP_N} \
+        --max_samples 500 \
+        --debug
+    
+    echo "Completed Word Parallel top_n_per_word=${TOP_N}"
+    echo "Sleeping for 2 minutes..."
+    sleep 120
+done
 
-# echo ""
-# echo "Word Parallel experiments completed!"
+echo ""
+echo "Word Parallel experiments completed!"
 
 echo ""
 echo "================================================"
-echo "RANDOM BASELINE DIRECT TRANSLATION EXPERIMENT COMPLETED!"
+echo "WORD PARALLEL VECTORIZER EXPERIMENTS COMPLETED!"
 echo "================================================"
 echo "End time: $(date)"
-echo "Total experiments: 1"
-echo "  - Random Baseline Direct Translation: 1 (k=5) [Random few-shot baseline for direct translation]"
+echo "Total experiments: 3"
+echo "  - Word Parallel: 3 experiments (top_n_per_word=10, 15, 20)"
 echo "Results saved in: results/gemini-2.5-flash-webp-dhao/vectorizer_ablation/"
 echo ""
-echo "NOTE: This runs DIRECT TRANSLATION (not post-editing) using random few-shot examples"
-echo "      Other experiments (BM25, BGE, ChrF-RAG, Word Parallel) have been commented out."
-echo "      Uncomment them in the script if you want to run the full ablation study."
+echo "NOTE: This runs Word Parallel vectorizer experiments for post-editing"
+echo "      Other experiments (Random Baseline, BM25, BGE, ChrF-RAG) have been commented out."
+echo "      Uncomment them in the script if you want to run additional experiments."
 echo "================================================"
 

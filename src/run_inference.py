@@ -90,6 +90,11 @@ def read_csv_file(input_path):
     if missing_cols:
         raise ValueError(f"Missing required columns in CSV: {missing_cols}")
     
+    # Limit to first 500 rows to match run_evaluation.py behavior
+    if len(df) > 500:
+        df = df.head(500)
+        print(f"Limited to first 500 rows for consistency with evaluation")
+    
     print(f"Loaded CSV with {len(df)} rows")
     return df
 
