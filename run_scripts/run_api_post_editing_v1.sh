@@ -98,14 +98,14 @@ python run_post_editing.py \
     --tgt ${TGT} \
     --src_lang_name ${SRC_LANG_NAME} \
     --tgt_lang_name ${TGT_LANG_NAME} \
-    --output_dir "${BASE_OUTPUT}/gemini-2.5-flash-webp-dhao/parallel_full" \
+    --output_dir "${BASE_OUTPUT}/gemini-2.5-flash-webp-dhao/parallel_full_n10" \
     --prompt "dhao_post_editing" \
     --few_shot_mode "parallel" \
     --vectorizer "word_parallel" \
     --few_shot_corpus_path ${ADDITIONAL_FEW_SHOT_CORPUS_PATH} \
     --batch_size 100 \
     --delay_between_batches 5.0 \
-    --top_n_per_word 5 \
+    --top_n_per_word 10 \
     --max_samples 500 \
     --debug
 
@@ -117,14 +117,14 @@ python run_post_editing.py \
     --tgt ${TGT} \
     --src_lang_name ${SRC_LANG_NAME} \
     --tgt_lang_name ${TGT_LANG_NAME} \
-    --output_dir "${BASE_OUTPUT}/gemini-2.5-flash-webp-dhao/parallel_nt" \
+    --output_dir "${BASE_OUTPUT}/gemini-2.5-flash-webp-dhao/parallel_nt_n10" \
     --prompt "dhao_post_editing" \
     --few_shot_mode "parallel" \
     --vectorizer "word_parallel" \
     --few_shot_corpus_path ${FEW_SHOT_CORPUS_PATH} \
     --batch_size 100 \
     --delay_between_batches 5.0 \
-    --top_n_per_word 5 \
+    --top_n_per_word 10 \
     --max_samples 500 \
     --debug
  
@@ -136,13 +136,13 @@ python run_post_editing.py \
     --tgt ${TGT} \
     --src_lang_name ${SRC_LANG_NAME} \
     --tgt_lang_name ${TGT_LANG_NAME} \
-    --output_dir "${BASE_OUTPUT}/gemini-2.5-flash-webp-dhao/parallel_full+nt" \
+    --output_dir "${BASE_OUTPUT}/gemini-2.5-flash-webp-dhao/parallel_full+nt_n10" \
     --prompt "dhao_post_editing" \
     --few_shot_mode "parallel" \
     --vectorizer "word_parallel" \
     --few_shot_corpus_path ${FEW_SHOT_CORPUS_PATH} ${ADDITIONAL_FEW_SHOT_CORPUS_PATH} \
     --batch_size 100 \
     --delay_between_batches 5.0 \
-    --top_n_per_word 5 \
+    --top_n_per_word 10 \
     --max_samples 500 \
     --debug

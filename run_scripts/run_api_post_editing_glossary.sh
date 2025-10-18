@@ -86,21 +86,21 @@ python run_post_editing.py \
     --max_samples 500 \
     --debug
 
-python run_post_editing.py \
-    --model_type "gemini" \
-    --model_name "gemini-2.5-flash" \
-    --csv_path ${CSV_PATH} \
-    --src "eng" \
-    --tgt ${TGT} \
-    --src_lang_name ${SRC_LANG_NAME} \
-    --tgt_lang_name ${TGT_LANG_NAME} \
-    --output_dir "${BASE_OUTPUT}/gemini-2.5-flash-webp-dhao/glossary_full" \
-    --prompt "dhao_post_editing" \
-    --few_shot_mode "glossary" \
-    --glossary_mode "full" \
-    --glossary_path ${GLOSSARY_PATH} \
-    --batch_size 100 \
-    --delay_between_batches 5.0 \
-    --top_n_per_word_glossary 5 \
-    --max_samples 500 \
-    --debug
+# python run_post_editing.py \
+#     --model_type "gemini" \
+#     --model_name "gemini-2.5-flash" \
+#     --csv_path ${CSV_PATH} \
+#     --src "eng" \
+#     --tgt ${TGT} \
+#     --src_lang_name ${SRC_LANG_NAME} \
+#     --tgt_lang_name ${TGT_LANG_NAME} \
+#     --output_dir "${BASE_OUTPUT}/gemini-2.5-flash-webp-dhao/glossary_full" \
+#     --prompt "dhao_post_editing" \
+#     --few_shot_mode "glossary" \
+#     --glossary_mode "full" \
+#     --glossary_path ${GLOSSARY_PATH} \
+#     --batch_size 100 \
+#     --delay_between_batches 5.0 \
+#     --top_n_per_word_glossary 5 \
+#     --max_samples 500 \
+#     --debug
