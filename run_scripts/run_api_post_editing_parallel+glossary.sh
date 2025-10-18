@@ -69,8 +69,8 @@ python run_post_editing.py \
     --vectorizer "word_parallel" \
     --few_shot_corpus_path ${FEW_SHOT_CORPUS_PATH} ${ADDITIONAL_FEW_SHOT_CORPUS_PATH} \
     --glossary_path ${GLOSSARY_PATH} \
-    --batch_size 100 \
-    --delay_between_batches 5.0 \
+    --batch_size 20 \
+    --delay_between_batches 60.0 \
     --top_n_per_word 10 \
     --max_samples 500 \
     --debug

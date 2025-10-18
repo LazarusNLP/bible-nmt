@@ -230,19 +230,67 @@ class DataHandler:
         print(f"Batch wrote {len(rows)} rows to {filepath}")
     
     @staticmethod
+    def replace_rows_in_csv(new_rows: List[Row], filepath: str):
+        """
+        Replace rows in CSV file by merging with existing rows.
+        Uses src_text as the unique identifier to match and replace rows.
+        This is useful for replacing fallback rows with successfully processed ones.
+        """
+        if not new_rows:
+            return
+        
+        # Load existing rows if file exists
+        existing_rows = []
+        if os.path.exists(filepath):
+            existing_rows = DataHandler.load_from_savepath(filepath)
+            print(f"Loaded {len(existing_rows)} existing rows from {filepath}")
+        
+        # Create a mapping of src_text to new rows for fast lookup
+        new_rows_map = {row.src_text: row for row in new_rows}
+        
+        # Build the final list: replace existing rows with new ones where available
+        final_rows = []
+        replaced_count = 0
+        
+        for existing_row in existing_rows:
+            if existing_row.src_text in new_rows_map:
+                # Replace with new row
+                final_rows.append(new_rows_map[existing_row.src_text])
+                replaced_count += 1
+                # Remove from map so we can track which rows are truly new
+                del new_rows_map[existing_row.src_text]
+            else:
+                # Keep existing row
+                final_rows.append(existing_row)
+        
+        # Add any remaining new rows that weren't replacements
+        if new_rows_map:
+            final_rows.extend(new_rows_map.values())
+            print(f"Added {len(new_rows_map)} new rows")
+        
+        # Now write all rows back to the file
+        print(f"Replacing {replaced_count} rows in {filepath}")
+        DataHandler.save_to_csv(final_rows, filepath)
+    
+    @staticmethod
     def create_csv_buffer(filepath: str, buffer_size: int = 50) -> CSVBuffer:
         """Create a CSV buffer for efficient batch writing."""
         return CSVBuffer(filepath, buffer_size)
 
     @staticmethod
-    def find_unprocessed_rows(all_rows: List[Row], output_filepath: str) -> List[Row]:
+    def find_unprocessed_rows(all_rows: List[Row], output_filepath: str) -> tuple:
         """
         Find rows that haven't been processed yet by comparing with existing CSV file.
         Treats rows where post_edited_tgt_txt == pred_tgt_text as unprocessed (likely fallback cases).
+        
+        Returns:
+            Tuple of (unprocessed_rows, has_fallback_rows)
+            - unprocessed_rows: List of rows that need processing
+            - has_fallback_rows: True if any fallback rows were found that need replacement
         """
         if not os.path.exists(output_filepath):
             print("No existing output file found. Processing all rows.")
-            return all_rows
+            return all_rows, False
         
         try:
             existing_rows = DataHandler.load_from_savepath(output_filepath)
@@ -271,6 +319,7 @@ class DataHandler:
             
             successful_count = len(successfully_completed_src_texts)
             total_existing = len(existing_rows)
+            has_fallback = fallback_count > 0
             
             print(f"Existing CSV analysis:")
             print(f"  - {successful_count} successfully post-edited rows")
@@ -278,10 +327,10 @@ class DataHandler:
             print(f"  - {total_existing - successful_count - fallback_count} other rows")
             print(f"Found {len(unprocessed_rows)} rows to process (including {fallback_count} fallback retries)")
             
-            return unprocessed_rows
+            return unprocessed_rows, has_fallback
         except Exception as e:
             print(f"Error reading existing file: {e}. Processing all rows.")
-            return all_rows
+            return all_rows, False
 
     @staticmethod
     def load_few_shot_corpus(corpus_paths: Union[str, List[str]]) -> List[tuple]:

@@ -70,7 +70,10 @@ class ProcessingEngine:
         
         # Find unprocessed rows
         with self.timing_tracker.timer("data_loading"):
-            unprocessed_rows = DataHandler.find_unprocessed_rows(rows, output_filepath)
+            unprocessed_rows, has_fallback_rows = DataHandler.find_unprocessed_rows(rows, output_filepath)
+            # Temporarily disable fallback replacement to avoid memory issues with large datasets
+            # Fallback rows will be reprocessed on next run
+            has_fallback_rows = False
         
         if not unprocessed_rows:
             print("All rows have already been processed!")
@@ -188,19 +191,19 @@ class ProcessingEngine:
                 print(f"Sequential mode: Processing {len(unprocessed_rows)} rows one by one...")
                 successful_count, skipped_count = self._process_individually(
                     unprocessed_rows, few_shot_examples_list, glossary_entries_list,
-                    output_filepath, prompt_key, debug, translation_mode
+                    output_filepath, prompt_key, debug, translation_mode, has_fallback_rows
                 )
             elif batch_size and len(unprocessed_rows) > batch_size:
                 successful_count, skipped_count = self._process_in_batches(
                     unprocessed_rows, few_shot_examples_list, glossary_entries_list, 
-                    output_filepath, prompt_key, batch_size, num_workers, debug, sequential, translation_mode
+                    output_filepath, prompt_key, batch_size, num_workers, debug, sequential, translation_mode, has_fallback_rows
                 )
             else:
                 # Process all rows at once (no outer batching)
                 # This is optimal for Gemini async processing
                 successful_count, skipped_count = self._process_all_at_once(
                     unprocessed_rows, few_shot_examples_list, glossary_entries_list,
-                    output_filepath, prompt_key, num_workers, debug, sequential, translation_mode
+                    output_filepath, prompt_key, num_workers, debug, sequential, translation_mode, has_fallback_rows
                 )
                 
         except Exception as e:
@@ -208,7 +211,7 @@ class ProcessingEngine:
             print("Attempting to process remaining rows individually...")
             successful_count, skipped_count = self._process_individually(
                 unprocessed_rows, few_shot_examples_list, glossary_entries_list,
-                output_filepath, prompt_key, debug, translation_mode
+                output_filepath, prompt_key, debug, translation_mode, has_fallback_rows
             )
         
         print(f"Processing complete: {successful_count} successful, {skipped_count} fallback (using original pred_text)")
@@ -302,13 +305,14 @@ class ProcessingEngine:
     
     def _process_in_batches(self, rows: List[Row], few_shot_list: List, glossary_list: List,
                            output_filepath: str, prompt_key: str, batch_size: int, 
-                           num_workers: int, debug: bool, sequential: bool = False, translation_mode: bool = False) -> tuple:
+                           num_workers: int, debug: bool, sequential: bool = False, translation_mode: bool = False, has_fallback_rows: bool = False) -> tuple:
         """Process rows in batches."""
         print(f"Processing {len(rows)} rows in batches of {batch_size}...")
         
         successful_count = 0
         skipped_count = 0
         total_token_counts = []
+        all_processed_rows = []  # Collect all rows if we need to replace
         
         for batch_start in range(0, len(rows), batch_size):
             batch_end = min(batch_start + batch_size, len(rows))
@@ -367,16 +371,28 @@ class ProcessingEngine:
                             print(f"    Error in message {i+1}: {e}")
                             batch_translations.append("")
                 elif self.llm.supports_batch:
-                    print(f"  Using {self.llm.model_name} native batch processing with incremental saving...")
                     # Check if the model supports incremental saving (Gemini async does)
                     if hasattr(self.llm, 'generate_batch') and 'gemini' in self.llm.model_name.lower():
-                        batch_translations = self.llm.generate_batch(
-                            batch_messages, 
-                            rows_data=batch_rows, 
-                            output_filepath=output_filepath,
-                            sequential=False,  # Sequential mode handled above
-                            translation_mode=translation_mode
-                        )
+                        if has_fallback_rows:
+                            # Don't use incremental saving when replacing fallback rows
+                            print(f"  Using {self.llm.model_name} native batch processing (no incremental saving for fallback replacement)...")
+                            batch_translations = self.llm.generate_batch(
+                                batch_messages, 
+                                rows_data=batch_rows, 
+                                output_filepath=None,  # Disable incremental saving
+                                sequential=False,
+                                translation_mode=translation_mode
+                            )
+                        else:
+                            # Use incremental saving for normal processing
+                            print(f"  Using {self.llm.model_name} native batch processing with incremental saving...")
+                            batch_translations = self.llm.generate_batch(
+                                batch_messages, 
+                                rows_data=batch_rows, 
+                                output_filepath=output_filepath,
+                                sequential=False,  # Sequential mode handled above
+                                translation_mode=translation_mode
+                            )
                     else:
                         # For vLLM and other batch-supporting models
                         batch_translations = self.llm.generate_batch(batch_messages, sequential=False, translation_mode=translation_mode)
@@ -396,15 +412,53 @@ class ProcessingEngine:
                 batch_timing["llm_inference"] = time.time() - inference_start
             
             # Process and save results
-            # For Gemini with incremental saving, results are already saved during batch processing
+            # For Gemini with incremental saving, results are already saved during batch processing (unless has_fallback_rows)
             if hasattr(self.llm, 'generate_batch') and 'gemini' in self.llm.model_name.lower() and self.llm.supports_batch:
-                # Count successful/fallback without duplicate saving, but still need to calculate metrics if enabled
+                # Count successful/fallback
                 batch_success = sum(1 for t in batch_translations if t and not t.startswith("["))
                 batch_fallback = len(batch_translations) - batch_success
-                print(f"  Batch results already saved incrementally: {batch_success} successful, {batch_fallback} fallback")
                 
-                # Calculate metrics for the batch if metrics are enabled
-                if not self.disable_metrics and batch_success > 0:
+                if has_fallback_rows:
+                    # When replacing fallback rows, we disabled incremental saving
+                    # Process the rows but don't save yet - collect for replacement at the end
+                    print(f"  Batch {batch_num}: {batch_success} successful, {batch_fallback} fallback (will replace at end)")
+                    
+                    # Update the batch_rows with translations and metrics
+                    for i, (row, translation) in enumerate(zip(batch_rows, batch_translations)):
+                        if translation and translation.strip() and not translation.startswith("["):
+                            row.post_edited_tgt_txt = translation.strip()
+                            # Calculate metrics if not disabled
+                            if not self.disable_metrics:
+                                try:
+                                    from core.metrics import MetricsCalculator
+                                    individual_metrics = MetricsCalculator.calculate_individual_metrics(
+                                        original_text=row.pred_tgt_text,
+                                        post_edited_text=translation.strip(),
+                                        reference_text=row.tgt_text
+                                    )
+                                    row.spbleu_improvement = individual_metrics["improvements"]["spbleu"]
+                                    row.chrf3_improvement = individual_metrics["improvements"]["chrf3"]
+                                    row.chrfpp_improvement = individual_metrics["improvements"]["chrfpp"]
+                                except Exception as e:
+                                    row.spbleu_improvement = None
+                                    row.chrf3_improvement = None
+                                    row.chrfpp_improvement = None
+                        else:
+                            # Fallback case
+                            row.post_edited_tgt_txt = row.pred_tgt_text
+                            if not self.disable_metrics:
+                                row.spbleu_improvement = 0.0
+                                row.chrf3_improvement = 0.0
+                                row.chrfpp_improvement = 0.0
+                    
+                    # Collect these rows for replacement at the end
+                    all_processed_rows.extend(batch_rows)
+                else:
+                    # Normal incremental saving was used
+                    print(f"  Batch results already saved incrementally: {batch_success} successful, {batch_fallback} fallback")
+                
+                # Calculate metrics for the batch if metrics are enabled (only for incremental saving case)
+                if not has_fallback_rows and not self.disable_metrics and batch_success > 0:
                     with self.timing_tracker.timer("individual_metrics_calculation"):
                         metrics_start = time.time()
                         try:
@@ -453,9 +507,14 @@ class ProcessingEngine:
                 with self.timing_tracker.timer("data_saving"):
                     saving_start = time.time()
                     batch_success, batch_fallback = self._save_batch_results(
-                        batch_rows, batch_translations, output_filepath, translation_mode
+                        batch_rows, batch_translations, output_filepath, translation_mode, has_fallback_rows
                     )
                     batch_timing["data_saving"] = time.time() - saving_start
+                
+                # If we have fallback rows, collect these processed rows for replacement
+                if has_fallback_rows:
+                    all_processed_rows.extend(batch_rows)
+            
             successful_count += batch_success
             skipped_count += batch_fallback
             
@@ -468,10 +527,27 @@ class ProcessingEngine:
         if self.token_counter and total_token_counts:
             self._print_token_statistics(total_token_counts)
         
+        # If we have fallback rows and collected processed rows, replace them in the CSV
+        # Write in chunks to avoid memory issues
+        if has_fallback_rows and all_processed_rows:
+            print(f"Replacing {len(all_processed_rows)} fallback rows in CSV...")
+            # Process in chunks of 50 to avoid memory issues
+            chunk_size = 50
+            for i in range(0, len(all_processed_rows), chunk_size):
+                chunk = all_processed_rows[i:i+chunk_size]
+                if i == 0:
+                    # First chunk does the full replacement
+                    DataHandler.replace_rows_in_csv(chunk, output_filepath)
+                else:
+                    # Subsequent chunks just update existing rows
+                    DataHandler.replace_rows_in_csv(chunk, output_filepath)
+                print(f"  Processed {min(i+chunk_size, len(all_processed_rows))}/{len(all_processed_rows)} rows...")
+            print(f"✅ Replacement complete!")
+        
         return successful_count, skipped_count
     
     def _process_all_at_once(self, rows: List[Row], few_shot_list: List, glossary_list: List,
-                            output_filepath: str, prompt_key: str, num_workers: int, debug: bool, sequential: bool = False, translation_mode: bool = False) -> tuple:
+                            output_filepath: str, prompt_key: str, num_workers: int, debug: bool, sequential: bool = False, translation_mode: bool = False, has_fallback_rows: bool = False) -> tuple:
         """Process all rows at once."""
         print("Generating messages for all unprocessed rows...")
         
@@ -524,10 +600,16 @@ class ProcessingEngine:
                         print(f"  Error in message {i+1}: {e}")
                         translations.append("")
             elif self.llm.supports_batch:
-                print(f"Using {self.llm.model_name} native batch processing with incremental saving...")
                 # Check if the model supports incremental saving (Gemini async does)
                 if hasattr(self.llm, 'generate_batch') and 'gemini' in self.llm.model_name.lower():
-                    translations = self.llm.generate_batch(messages, rows_data=rows, output_filepath=output_filepath, sequential=False, translation_mode=translation_mode)
+                    if has_fallback_rows:
+                        # Don't use incremental saving when replacing fallback rows
+                        print(f"Using {self.llm.model_name} native batch processing (no incremental saving for fallback replacement)...")
+                        translations = self.llm.generate_batch(messages, rows_data=rows, output_filepath=None, sequential=False, translation_mode=translation_mode)
+                    else:
+                        # Use incremental saving for normal processing
+                        print(f"Using {self.llm.model_name} native batch processing with incremental saving...")
+                        translations = self.llm.generate_batch(messages, rows_data=rows, output_filepath=output_filepath, sequential=False, translation_mode=translation_mode)
                 else:
                     # For vLLM and other batch-supporting models
                     translations = self.llm.generate_batch(messages, sequential=False, translation_mode=translation_mode)
@@ -559,7 +641,7 @@ class ProcessingEngine:
         # Save results
         with self.timing_tracker.timer("data_saving"):
             saving_start = time.time()
-            result = self._save_batch_results(rows, translations, output_filepath, translation_mode)
+            result = self._save_batch_results(rows, translations, output_filepath, translation_mode, has_fallback_rows)
             batch_timing["data_saving"] = time.time() - saving_start
         
         # Record total batch time
@@ -570,7 +652,8 @@ class ProcessingEngine:
         return result
     
     def _process_individually(self, rows: List[Row], few_shot_list: List, glossary_list: List,
-                             output_filepath: str, prompt_key: str, debug: bool, translation_mode: bool = False) -> tuple:
+                             output_filepath: str, prompt_key: str, debug: bool, translation_mode: bool = False, 
+                             has_fallback_rows: bool = False) -> tuple:
         """
         Process rows individually as fallback with CSV buffering.
         Uses original pred_text as fallback for failed/invalid translations.
@@ -582,8 +665,13 @@ class ProcessingEngine:
         batch_timing = {"batch_id": 1, "rows_processed": len(rows)}
         batch_start_time = time.time()
         
-        # Use CSV buffer for efficient writing
-        with DataHandler.create_csv_buffer(output_filepath, buffer_size=25) as csv_buffer:
+        # Collect all processed rows instead of using buffer if we need to replace
+        all_processed_rows = []
+        
+        # Use CSV buffer for efficient writing only if not replacing
+        csv_buffer = None if has_fallback_rows else DataHandler.create_csv_buffer(output_filepath, buffer_size=25)
+        if csv_buffer:
+            csv_buffer.__enter__()
             for i, (row, few_shot_examples, glossary_entries) in enumerate(zip(rows, few_shot_list, glossary_list)):
                 try:
                     messages = row.get_messages(prompt_key, few_shot_examples, glossary_entries, translation_mode)
@@ -656,8 +744,11 @@ class ProcessingEngine:
                             row.chrf3_improvement = None
                             row.chrfpp_improvement = None
                     
-                    # Always add the row to buffer (either successful or fallback)
-                    csv_buffer.add_row(row)
+                    # Always add the row (either successful or fallback)
+                    if csv_buffer:
+                        csv_buffer.add_row(row)
+                    else:
+                        all_processed_rows.append(row)
                         
                 except Exception as row_error:
                     print(f"Error processing row {i+1}: {row_error}")
@@ -680,7 +771,19 @@ class ProcessingEngine:
                         row.chrfpp_improvement = None
                     
                     # Still add the row with fallback
-                    csv_buffer.add_row(row)
+                    if csv_buffer:
+                        csv_buffer.add_row(row)
+                    else:
+                        all_processed_rows.append(row)
+        
+        # Close buffer if used
+        if csv_buffer:
+            csv_buffer.__exit__(None, None, None)
+        
+        # If we collected rows for replacement, save them now
+        if has_fallback_rows and all_processed_rows:
+            print(f"Replacing fallback rows in CSV...")
+            DataHandler.replace_rows_in_csv(all_processed_rows, output_filepath)
         
         # Record total individual processing time
         batch_timing["total_batch_time"] = time.time() - batch_start_time
@@ -691,7 +794,7 @@ class ProcessingEngine:
         return successful_count, fallback_count
     
     def _save_batch_results(self, rows: List[Row], translations: List[str], 
-                           output_filepath: str, translation_mode: bool = False) -> tuple:
+                           output_filepath: str, translation_mode: bool = False, has_fallback_rows: bool = False) -> tuple:
         """
         Save batch results to file efficiently using batch processing.
         Uses original pred_text as fallback for failed/invalid translations to ensure 
@@ -784,8 +887,14 @@ class ProcessingEngine:
         # Batch write ALL processed rows to CSV (successful + fallback)
         if all_processed_rows:
             with self.timing_tracker.timer("data_saving"):
-                print(f"Writing {len(all_processed_rows)} rows to CSV in batch ({successful_count} successful, {fallback_count} fallback)...")
-                DataHandler.batch_append_to_csv(all_processed_rows, output_filepath)
+                if has_fallback_rows:
+                    # Replace existing rows instead of appending
+                    print(f"Replacing {len(all_processed_rows)} rows in CSV ({successful_count} successful, {fallback_count} fallback)...")
+                    DataHandler.replace_rows_in_csv(all_processed_rows, output_filepath)
+                else:
+                    # Normal append behavior
+                    print(f"Writing {len(all_processed_rows)} rows to CSV in batch ({successful_count} successful, {fallback_count} fallback)...")
+                    DataHandler.batch_append_to_csv(all_processed_rows, output_filepath)
         
         return successful_count, fallback_count
     
