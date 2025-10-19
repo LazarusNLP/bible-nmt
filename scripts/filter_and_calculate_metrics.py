@@ -87,10 +87,12 @@ def load_and_filter_data(input_csv_path, output_csv_path, max_rows=500):
     # Check for duplicate rows in the output dataframe
     print(f"Total rows before removing duplicates: {len(output)}")
     
-    # Remove duplicate rows (keeping the first occurrence)
-    output_no_duplicates = output.drop_duplicates()
+    # Remove duplicate rows, keeping the one with highest chrfpp_improvement
+    # Sort by chrfpp_improvement in descending order first
+    output = output.sort_values('chrfpp_improvement', ascending=False)
+    output_no_duplicates = output.drop_duplicates(keep='first')
     print(f"Total rows after removing duplicates: {len(output_no_duplicates)}")
-    print(f"Removed {len(output) - len(output_no_duplicates)} duplicate rows")
+    print(f"Removed {len(output) - len(output_no_duplicates)} duplicate rows (kept highest chrfpp_improvement)")
     
     # Replace the original dataframe with the deduplicated one
     output = output_no_duplicates
