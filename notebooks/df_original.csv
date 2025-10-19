@@ -1,0 +1,8 @@
+,variant,training_config,metric_type,bleu,sacrebleu,spbleu,chrf,chrf3,chrf++
+0,t4t,glossary_full+parallel_full+nt,original,7.7986,5.3421,7.9053,27.9736,29.3364,26.4387
+1,engwyc2018,glossary_full+parallel_full+nt,original,5.7615,4.0005,5.6004,26.6676,29.2668,25.1552
+2,engojb,glossary_full+parallel_full+nt,original,4.9482,3.342,4.4387,23.756,25.9914,22.4802
+3,webp,glossary_full+parallel_full+nt,original,8.0602,5.3923,7.6587,28.5904,30.1923,27.1123
+4,englsv,glossary_full+parallel_full+nt,original,7.2308,5.0479,7.1518,27.4448,29.1393,26.0066
+5,engwyc2017,glossary_full+parallel_full+nt,original,7.2985,4.97,6.6666,27.3801,29.1627,25.8963
+6,engBBE,glossary_full+parallel_full+nt,original,7.6485,5.1203,7.069,27.8952,29.6535,26.4478
