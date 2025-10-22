@@ -9,7 +9,8 @@ cd /data/projects/punim0478/setiawand/bible-nmt
 # else
 #     echo "Warning: .env file not found at $(pwd)/.env"
 # fi
-export GEMINI_API_KEY="AIzaSyDJHe-13njDJRguS8Y3roewXq3PAk-hYig"
+export GEMINI_API_KEY="AIzaSyCLd-JaWvVLlOeJ1zZb6mSkdFea48MDU14"
+
 
 # Change to post-editing directory for imports to work correctly
 cd src/post-editing
@@ -23,7 +24,7 @@ SRC_LANG_NAME="English"
 TGT_LANG_NAME="Dhao"
 
 # Define versions to process
-VERSIONS=("engwebster" "enggnv")
+VERSIONS=("engbsb")
 
 # Loop through each version
 for VERSION in "${VERSIONS[@]}"; do
@@ -51,8 +52,8 @@ for VERSION in "${VERSIONS[@]}"; do
         --vectorizer "word_parallel" \
         --few_shot_corpus_path ${FEW_SHOT_CORPUS_PATH} ${ADDITIONAL_FEW_SHOT_CORPUS_PATH} \
         --glossary_path ${GLOSSARY_PATH} \
-        --batch_size 50 \
-        --delay_between_batches 30.0 \
+        --batch_size 20 \
+        --delay_between_batches 40.0 \
         --top_n_per_word 5 \
         --max_samples 500 \
         --debug

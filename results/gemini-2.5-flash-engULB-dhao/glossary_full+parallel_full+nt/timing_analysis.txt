@@ -1,0 +1,96 @@
+================================================================================
+⏱️  POST-EDITING PIPELINE PERFORMANCE ANALYSIS
+================================================================================
+Generated at: 2025-10-21 22:42:09
+
+📊 COMPONENT PERFORMANCE BREAKDOWN:
+------------------------------------------------------------
+
+LLM_INFERENCE:
+  Total Time: 681.50s
+  Average Time: 227.17s
+  Min Time: 163.19s
+  Max Time: 264.62s
+  Call Count: 3
+  % of Total Pipeline: 60.3%
+
+INDIVIDUAL_METRICS_CALCULATION:
+  Total Time: 362.45s
+  Average Time: 120.82s
+  Min Time: 83.91s
+  Max Time: 140.62s
+  Call Count: 3
+  % of Total Pipeline: 32.1%
+
+RAG_RETRIEVAL:
+  Total Time: 76.16s
+  Average Time: 76.16s
+  Min Time: 76.16s
+  Max Time: 76.16s
+  Call Count: 1
+  % of Total Pipeline: 6.7%
+
+FINAL_METRICS_CALCULATION:
+  Total Time: 9.54s
+  Average Time: 9.54s
+  Min Time: 9.54s
+  Max Time: 9.54s
+  Call Count: 1
+  % of Total Pipeline: 0.8%
+
+MESSAGE_GENERATION:
+  Total Time: 0.10s
+  Average Time: 0.03s
+  Min Time: 0.03s
+  Max Time: 0.04s
+  Call Count: 3
+  % of Total Pipeline: 0.0%
+
+DATA_LOADING:
+  Total Time: 0.00s
+  Average Time: 0.00s
+  Min Time: 0.00s
+  Max Time: 0.00s
+  Call Count: 1
+  % of Total Pipeline: 0.0%
+
+GLOSSARY_SELECTION:
+  Total Time: 0.00s
+  Average Time: 0.00s
+  Min Time: 0.00s
+  Max Time: 0.00s
+  Call Count: 1
+  % of Total Pipeline: 0.0%
+
+📈 DETAILED BATCH TIMINGS:
+------------------------------------------------------------
+
+Batch 1:
+  Rows processed: 50
+  Total batch time: 391.67s
+  message_generation: 0.04s
+  llm_inference: 253.69s
+  individual_metrics_calculation: 137.91s
+
+Batch 2:
+  Rows processed: 50
+  Total batch time: 405.31s
+  message_generation: 0.04s
+  llm_inference: 264.62s
+  individual_metrics_calculation: 140.62s
+
+Batch 3:
+  Rows processed: 36
+  Total batch time: 247.15s
+  message_generation: 0.03s
+  llm_inference: 163.19s
+  individual_metrics_calculation: 83.91s
+
+🏁 PIPELINE SUMMARY:
+------------------------------------------------------------
+Total execution time: 1129.84s
+Total execution time: 18.83 minutes
+Total rows processed: 136
+Throughput: 0.12 rows/second
+
+================================================================================

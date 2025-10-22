@@ -1,4 +1,4 @@
-iso_codes=(englsv engojb t4t)
+iso_codes=(engULB)
 
 for code in "${iso_codes[@]}"; do
     echo "Aligning NT and OT for target language: $code"

@@ -1,13 +1,13 @@
 #!/bin/bash
-iso_codes=(engwebp)
+iso_codes=(engULB)
 
 BASE_INPUT_FILE="./ebible-corpus/dhao-eng"
 BASE_MODEL_PATH="./nllb-models/english/nllb-200-distilled-600M-eng"
 
 for code in "${iso_codes[@]}"; do
     echo "Running inference for target language: $code"
-    MODEL_PATH="${BASE_MODEL_PATH}-${code}-nfa-extra-parallel/checkpoint-5000"
-    INPUT_FILE="${BASE_INPUT_FILE}/${code}+/aligned-eng-${code}-ot.csv"
+    MODEL_PATH="${BASE_MODEL_PATH}-${code}-nfa/checkpoint-5000"
+    INPUT_FILE="${BASE_INPUT_FILE}/${code}/aligned-eng-${code}-ot.csv"
     
     python src/run_inference.py \
         --input_path "$INPUT_FILE" \
@@ -17,5 +17,5 @@ for code in "${iso_codes[@]}"; do
         --tgt_lang_nllb "nfa_Latn" \
         --max_length 400 \
         --num_beams 8 \
-        --per_device_eval_batch_size 64
+        --per_device_eval_batch_size 32
 done
