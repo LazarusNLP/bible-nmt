@@ -3,13 +3,12 @@
 cd /data/projects/punim0478/setiawand/bible-nmt
 
 # Load environment variables from .env file
-# if [ -f .env ]; then
-#     echo "Loading environment variables from .env file..."
-#     export $(cat .env | grep -v '^#' | xargs)
-# else
-#     echo "Warning: .env file not found at $(pwd)/.env"
-# fi
-export GEMINI_API_KEY="AIzaSyCLd-JaWvVLlOeJ1zZb6mSkdFea48MDU14"
+if [ -f .env ]; then
+    echo "Loading environment variables from .env file..."
+    export $(cat .env | grep -v '^#' | xargs)
+else
+    echo "Warning: .env file not found at $(pwd)/.env"
+fi
 
 
 # Change to post-editing directory for imports to work correctly

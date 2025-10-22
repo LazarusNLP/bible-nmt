@@ -1,0 +1,13 @@
+,Method,n_shot,spBLEU,chrF++
+0,nllb-200-distilled-600M_NT,~,7.66,27.11
+1,Full,2377,16.27 (+8.61),31.32 (+4.21)
+2,Fuzzy Word Matching,100 (≈2559),16.22 (+8.56),30.88 (+3.77)
+3,Fuzzy Word Matching,70 (≈1791),15.76 (+8.10),30.61 (+3.50)
+4,Fuzzy Word Matching,50 (≈1279),15.29 (+7.63),30.58 (+3.47)
+5,Fuzzy Word Matching,30 (≈767),15.19 (+7.53),30.42 (+3.31)
+6,Fuzzy Word Matching,25 (≈639),15.19 (+7.53),30.25 (+3.13)
+7,Fuzzy Word Matching,20 (≈511),14.85 (+7.19),29.84 (+2.73)
+8,Fuzzy Word Matching,15 (≈383),14.53 (+6.87),29.84 (+2.72)
+9,Fuzzy Word Matching,5 (≈127),14.29 (+6.63),29.76 (+2.65)
+10,Fuzzy Word Matching,10 (≈255),14.18 (+6.52),29.66 (+2.55)
+11,Fuzzy Word Matching,3 (≈76),13.84 (+6.18),29.56 (+2.45)
