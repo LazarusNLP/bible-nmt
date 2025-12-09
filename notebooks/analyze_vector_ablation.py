@@ -86,7 +86,7 @@ def analyze_retrieval_budget():
     print("=" * 80)
 
     # Load test data from OT
-    base_path = Path("/Users/davidsamuel/Documents/Unimelb Masters/Thesis/bible-nmt")
+    base_path = Path("/data/projects/punim0478/setiawand/bible-nmt")
     test_file = (
         base_path
         / "results"
@@ -168,7 +168,7 @@ def analyze_retrieval_budget():
     similarity_threshold = 0.5
 
     # Prepare source texts for parallel processing
-    n_workers = min(cpu_count() - 1, 8)  # Use up to 8 workers, leave 1 core free
+    n_workers = min(cpu_count() - 1, 20)  # Use up to 8 workers, leave 1 core free
     print(f"   Using {n_workers} parallel workers")
 
     src_texts = [row["src_text"] for _, row in test_df_500.iterrows()]
